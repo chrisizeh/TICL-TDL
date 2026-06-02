@@ -7,13 +7,13 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.GNN.TrackLinkingNet import GNN_TrackLinkingNet, EarlyStopping, weight_init
-from tracksterLinker.GNN.LossFunctions import *
-from tracksterLinker.GNN.train import *
-from tracksterLinker.utils.dataStatistics import *
-from tracksterLinker.utils.graphUtils import print_graph_statistics, negative_edge_imbalance
-from tracksterLinker.utils.plotResults import *
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.gnn.linking_net import GNNLinkingNet, EarlyStopping, weight_init
+from ticllearning.gnn.loss_function import *
+from ticllearning.gnn.train import *
+from ticllearning.utils.dataStatistics import *
+from ticllearning.utils.graphUtils import negative_edge_imbalance
+from ticllearning.utils.plotResults import *
 
 
 # No ready trained model for this available
@@ -45,7 +45,7 @@ print(f"Using device: {device}")
 start_epoch = 0
 epochs = 60
 
-model = GNN_TrackLinkingNet(input_dim=len(dataset_training.model_feature_keys),
+model = GNNLinkingNet(input_dim=len(dataset_training.model_feature_keys),
                             edge_feature_dim=dataset_training[0].edge_features.shape[1], niters=4,
                             edge_hidden_dim=32, hidden_dim=64, weighted_aggr=True, dropout=0.3,
                             node_scaler=dataset_training.node_scaler, edge_scaler=dataset_training.edge_scaler)

@@ -4,7 +4,7 @@ import random
 
 import torch
 
-from tracksterLinker.GNN.LossFunctions import FocalLoss
+from tracksterLinker.gnn.loss_functions import FocalLoss
 from tracksterLinker.datasets.GNNDataset import GNNDataset
 from tracksterLinker.utils.dataUtils import calc_weights
 from tracksterLinker.utils.perturbations.inErrorBars import *

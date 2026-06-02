@@ -2,7 +2,7 @@ import os.path as osp
 
 import torch
 
-from tracksterLinker.datasets.ClusterDatasetBuilder import ClusterDatasetBuilder
+from ticllearning.datasets.ClusterDatasetBuilder import ClusterDatasetBuilder
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}, number of devices: {torch.cuda.device_count()}")

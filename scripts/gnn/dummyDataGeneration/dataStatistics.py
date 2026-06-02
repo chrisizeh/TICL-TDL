@@ -5,9 +5,9 @@ import sklearn
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
-import tracksterLinker
-from tracksterLinker.utils.graphUtils import *
-from tracksterLinker.datasets.NeoGNNDataset import *
+import ticllearning
+from ticllearning.utils.graphUtils import *
+from ticllearning.datasets.NeoGNNDataset import *
 
 
 def statistics_of_gaussians(centers, covariances, poses, rel_poses, counts, cluster=10):

@@ -1,6 +1,6 @@
 import torch
 
-from tracksterLinker.datasets.GNNDataset import GNNDataset
+from ticllearning.datasets.GNNDataset import GNNDataset
 
 
 # num_data is the maximal value, it can be less than that

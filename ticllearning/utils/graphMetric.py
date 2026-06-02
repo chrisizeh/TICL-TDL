@@ -1,8 +1,8 @@
 import torch
 import numpy as np
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.utils.graphUtils import *
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.utils.graphUtils import *
 
 def filter_nested_list(data, allowed):
     if isinstance(data, list):

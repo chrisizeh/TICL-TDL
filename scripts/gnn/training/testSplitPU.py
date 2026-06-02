@@ -3,9 +3,8 @@ import os.path as osp
 
 from torch_geometric.loader.dataloader import DataLoader
 
-import tracksterLinker
-from tracksterLinker.utils.graphUtils import *
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset, load_branch_with_highest_cycle
+from ticllearning.utils.graphUtils import *
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
 
 import networkx as nx
 import numpy as np

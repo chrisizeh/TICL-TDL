@@ -7,8 +7,8 @@ import awkward as ak
 import torch
 import matplotlib.pyplot as plt
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.utils.graphHeatMap import GraphHeatmap
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.utils.graphHeatMap import GraphHeatmap
 
 
 

@@ -5,7 +5,7 @@ import awkward as ak
 from typing import List, Dict, Any
 from collections import defaultdict
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
 
 class TileConstants:
     minEta = -cp.pi

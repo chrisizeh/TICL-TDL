@@ -11,8 +11,8 @@ from tqdm import tqdm
 import torch
 from torch_geometric.data import Dataset, Data
 
-from tracksterLinker.utils.graphUtils import build_ticl_graph
-from tracksterLinker.utils.dataUtils import *
+from ticllearning.utils.graphUtils import build_ticl_graph
+from ticllearning.utils.dataUtils import *
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 

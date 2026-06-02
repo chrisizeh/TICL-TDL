@@ -8,10 +8,10 @@ import torch
 
 from tqdm import tqdm
 
-from tracksterLinker.datasets.ClusterDataset import ClusterDataset
-from tracksterLinker.datasets.lang import Lang
+from ticllearning.datasets.ClusterDataset import ClusterDataset
+from ticllearning.datasets.lang import Lang
 
-from tracksterLinker.utils.graphUtils import find_connected_components
+from ticllearning.utils.graphUtils import find_connected_components
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 

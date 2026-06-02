@@ -6,10 +6,10 @@ import os.path as osp
 
 from torch_geometric.loader.dataloader import DataLoader
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.utils.dataStatistics import *
-from tracksterLinker.utils.dataUtils import *
-from tracksterLinker.utils.perturbations.inErrorBars import *
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.utils.dataStatistics import *
+from ticllearning.utils.dataUtils import *
+from ticllearning.utils.perturbations.inErrorBars import *
 
 # User-defined phase space region
 MAX_ETA = 2.7

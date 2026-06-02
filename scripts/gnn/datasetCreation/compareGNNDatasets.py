@@ -1,10 +1,10 @@
 from glob import glob
-import tracksterLinker
-from tracksterLinker.utils.graphUtils import *
-from tracksterLinker.datasets.GNNDataset import GNNDataset
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset, load_branch_with_highest_cycle
+import ticllearning
+from ticllearning.utils.graphUtils import *
+from ticllearning.datasets.GNNDataset import GNNDataset
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset, load_branch_with_highest_cycle
 
-from tracksterLinker.utils.dataUtils import *
+from ticllearning.utils.dataUtils import *
 import os.path as osp
 import multiprocessing as mp
 

@@ -11,13 +11,13 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.utils.dataStatistics import *
-from tracksterLinker.utils.graphUtils import *
-from tracksterLinker.utils.graphMetric import *
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.utils.dataStatistics import *
+from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graphMetric import *
 
-from tracksterLinker.utils.perturbations.allNodes import perturbate
-from tracksterLinker.utils.perturbations.stabilityMap import *
+from ticllearning.utils.perturbations.allNodes import perturbate
+from ticllearning.utils.perturbations.stabilityMap import *
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import wait, FIRST_COMPLETED

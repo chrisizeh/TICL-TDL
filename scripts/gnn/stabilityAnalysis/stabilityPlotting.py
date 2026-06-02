@@ -12,11 +12,11 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
-from tracksterLinker.datasets.NeoGNNDataset import NeoGNNDataset
-from tracksterLinker.utils.dataStatistics import *
-from tracksterLinker.utils.graphUtils import *
-from tracksterLinker.utils.graphMetric import *
-from tracksterLinker.utils.graphHeatMap import GraphHeatmap
+from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.utils.dataStatistics import *
+from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graphMetric import *
+from ticllearning.utils.graphHeatMap import GraphHeatmap
 
 base_folder = "/data/czeh"
 run_name = "0002_model_large_contr_att"
