@@ -1,46 +1,42 @@
 import os.path as osp
 import os
-from datetime import datetime
-import json
-
-import awkward as ak
 
 import torch
 from torch import jit
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
-
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import *
-from ticllearning.utils.graphMetric import *
-
-from ticllearning.utils.perturbations.allNodes import perturbate
-from ticllearning.utils.perturbations.stabilityMap import *
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import wait, FIRST_COMPLETED
 import torch.multiprocessing as mp
+
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
+from ticllearning.utils.dataStatistics import *
+from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graphMetric import *
+
+from ticllearning.utils.perturbations.inErrorBars import perturbate
 
 def wait_some(futures):
     """Wait until at least one future completes, return (done, not_done)."""
     done, not_done = wait(futures, return_when=FIRST_COMPLETED)
     return done, list(not_done)
 
-def compute_and_save(graph_true, graph_pred, data, isPU, device, verbose, path):
+def compute_and_save(graph_true, graph_pred, data, isPU, device, verbose, path, extra_metrics=None):
     metrics = graph_dist(graph_true, graph_pred, data, isPU, device=device, verbose=verbose)
+    if extra_metrics is not None:
+        metrics.update(extra_metrics)
     torch.save(metrics, path)
     return path
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
-    model_name = "model_2025-10-29_traced"
 
     base_folder = "/data/czeh"
     run_name = "0002_model_large_contr_att"
+    model_name = "model_2025-10-29_traced"
     model_folder = osp.join(base_folder, f"model_results/{run_name}")
-    output_folder = osp.join(base_folder, f"training_data/{run_name}_global_metrics")
+    output_folder = osp.join(base_folder, f"training_data/{run_name}_stability_analysis")
     data_folder = osp.join(base_folder, "linking_dataset/dataset_hardronics_test")
     os.makedirs(output_folder, exist_ok=True)
 
@@ -58,12 +54,11 @@ if __name__ == "__main__":
     model = jit.load(osp.join(model_folder, f"{model_name}.pt"))
     model = model.to(device)
     model.eval()
-
     i = 0
-    trackstersPU = []
-    trackstersSignal = []
+
+    n_perturb = 30
     futures = []
-    max_workers = min(32, len(data_loader))
+    max_workers = min(32, n_perturb+1) 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         for sample in data_loader:
             print(f"Graph {i}")
@@ -75,11 +70,32 @@ if __name__ == "__main__":
             graph_true = sample.edge_index[y_true]
             graph_pred = sample.edge_index[y_pred]
 
+            os.makedirs(osp.join(output_folder, f"{i}"), exist_ok=True)
+
             futures.append(executor.submit(
                 compute_and_save,
                 graph_true, graph_pred, sample.x, sample.isPU, device, True,
-                osp.join(output_folder, f"Graph_{i}.pt"),
+                osp.join(output_folder, f"{i}", "baseline.pt"),
             ))
+
+            perturbated_data = perturbate(sample.x, num_samples=n_perturb, device=device)
+
+            for j, data in enumerate(perturbated_data):
+                print(f"Perturbated Graph {j}")
+                nn_pred = model.forward(data, sample.edge_features, sample.edge_index)
+                 
+                y_pred = (nn_pred > model.threshold).squeeze()
+                y_true = (sample.y > 0).squeeze()
+
+                graph_true = sample.edge_index[y_true]
+                graph_pred = sample.edge_index[y_pred]
+
+                futures.append(executor.submit(
+                    compute_and_save,
+                    graph_true, graph_pred, data, sample.isPU, device, True,
+                    osp.join(output_folder, f"{i}", f"graph_{j}.pt"),
+                    {"allNodes_perturb": j},
+                ))
 
             if len(futures) > 2 * max_workers:
                 done, futures = wait_some(futures)
@@ -90,6 +106,9 @@ if __name__ == "__main__":
                         print(f"[ERROR in worker] {e}")
 
             i += 1
+            if i == 100:
+                break
+
 
         for f in as_completed(futures):
             f.result()

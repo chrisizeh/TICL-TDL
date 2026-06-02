@@ -1,14 +1,7 @@
 import numpy as np
-import cupy as cp
 
-import sklearn
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
-
-import ticllearning
-from ticllearning.utils.graphUtils import *
-from ticllearning.datasets.NeoGNNDataset import *
-
 
 def statistics_of_gaussians(centers, covariances, poses, rel_poses, counts, cluster=10):
     kmeans = KMeans(n_clusters=cluster, random_state=0).fit(centers)

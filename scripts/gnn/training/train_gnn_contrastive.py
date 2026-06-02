@@ -7,8 +7,9 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
-from ticllearning.gnn.linking_net import GNNLinkingNet, EarlyStopping, weight_init
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
+from ticllearning.gnn.linking_net import EarlyStopping, weight_init
+from ticllearning.gnn.attention_net import GNNAttentionLinkingNet
 from ticllearning.gnn.loss_function import *
 from ticllearning.gnn.train import *
 from ticllearning.utils.dataStatistics import *
@@ -16,9 +17,9 @@ from ticllearning.utils.graphUtils import negative_edge_imbalance
 from ticllearning.utils.plotResults import *
 
 
-# No ready trained model for this available
-load_weights = False
-model_name = ""
+# Change to False to start training new model
+load_weights = True 
+model_name = "model_2025-10-29_epoch_30_dict"
 
 base_folder = "/data/czeh"
 load_model_folder = osp.join(base_folder, "model_results/0002_model_large_contr_att")
@@ -30,8 +31,8 @@ os.makedirs(model_folder, exist_ok=True)
 # Prepare Dataset
 batch_size = 1
 # Datset stored at patatrack-bg-01.cern.ch
-dataset_training = NeoGNNDataset(data_folder_training)
-dataset_test = NeoGNNDataset(data_folder_test, test=True)
+dataset_training = NeoGNNDataset(data_folder_training, only_signal=False)
+dataset_test = NeoGNNDataset(data_folder_test, test=True, only_signal=False)
 train_dl = DataLoader(dataset_training, shuffle=True, batch_size=batch_size)
 test_dl = DataLoader(dataset_test, shuffle=True, batch_size=batch_size)
 print(f"Training Dataset: {len(train_dl)}, Test Dataset: {len(test_dl)}")
@@ -42,48 +43,52 @@ device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # Prepare Model
-start_epoch = 0
+start_epoch = 5
 epochs = 60
 
-model = GNNLinkingNet(input_dim=len(dataset_training.model_feature_keys),
+model = GNNAttentionLinkingNet(input_dim=len(dataset_training.model_feature_keys),
                             edge_feature_dim=dataset_training[0].edge_features.shape[1], niters=4,
-                            edge_hidden_dim=32, hidden_dim=64, weighted_aggr=True, dropout=0.3,
+                            edge_hidden_dim=64, hidden_dim=128, num_heads=8, weighted_aggr=True, dropout=0.3,
                             node_scaler=dataset_training.node_scaler, edge_scaler=dataset_training.edge_scaler)
 model = model.to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+# LR is upper bound for Adam
+optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5, betas=(0.9, 0.95),
+                              eps=1e-8, weight_decay=0.01, amsgrad=True)
 
-#increase weight on positive edges just a bit more
+#increase weight on positive edges based on class imbalance
 alpha = 0.5 + negative_edge_imbalance(dataset_test)/2
 print(f"Focal loss with alpha={alpha}")
-loss_obj = FocalLossLogits(alpha=alpha, gamma=2)
-
+loss_obj = CombinedLoss(alpha=alpha, gamma=2, margin=2.0, weightFocal=100, weightContrastive=0.0001)
 
 early_stopping = EarlyStopping(patience=20, delta=0)
 model.apply(weight_init)
-
-# Load weights if needed
 date = f"{datetime.now():%Y-%m-%d}"
 
+# Load weights if needed
 if load_weights:
     weights = torch.load(osp.join(load_model_folder, f"{model_name}.pt"), weights_only=True)
-    model.load_state_dict(weights["model_state_dict"])
-    optimizer.load_state_dict(weights["optimizer_state_dict"])
-    start_epoch = weights["epoch"]
+    model.load_state_dict(weights["model_state_dict"], strict=False)
+
+    # uncomment to continue training exactly where left off
+    # optimizer.load_state_dict(weights["optimizer_state_dict"])
+    # start_epoch = weights["epoch"]
 
     save_model(model, 0, optimizer, [], [], output_folder=model_folder, filename=model_name, dummy_input=dataset_training[0])
 
-# Scheduler after weight loading, to take new epoch size into account
-scheduler = CosineAnnealingLR(optimizer, start_epoch+epochs, eta_min=1e-6)
+# Scheduler after weight loading, to take new epoch count into account
+scheduler = CosineAnnealingLR(optimizer, T_max=start_epoch+epochs)
 
 train_loss_hist = []
 val_loss_hist = []
 
-for epoch in range(start_epoch, start_epoch+epochs):
-    print(f'Epoch: {epoch+1}')
-    loss = train(model, optimizer, train_dl, epoch+1, loss_obj=loss_obj, node_feature_dict=NeoGNNDataset.node_feature_dict)
+print(scheduler.get_last_lr())
+last_epoch = start_epoch + epochs
+for epoch in range(start_epoch, last_epoch):
+    print(f'Epoch: {epoch}')
+    loss = train(model, optimizer, train_dl, epoch, loss_obj=loss_obj, scores=True)
     train_loss_hist.append(loss)
 
-    val_loss, cross_edges, signal_edges, pu_edges = test(model, test_dl, epoch+1, loss_obj=loss_obj, device=device, weighted="raw_energy", node_feature_dict=NeoGNNDataset.node_feature_dict)
+    val_loss, cross_edges, signal_edges, pu_edges = test(model, test_dl, epoch, loss_obj=loss_obj.focal, device=device, weighted="raw_energy")
     val_loss_hist.append(val_loss)
     print(f'Training loss: {loss}, Validation loss: {val_loss}, Learning Rate: {scheduler.get_last_lr()}')
 
@@ -97,24 +102,24 @@ for epoch in range(start_epoch, start_epoch+epochs):
     print("Only PU trackster:") 
     print_acc_scores_from_precalc(*pu_edges)
     
-    if ((epoch+1) % 10 == 0):
+    if ((epoch % 5 == 0) or (epoch + 1 == last_epoch)):
+        print("Store Model")
+        save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"model_{date}", dummy_input=dataset_training[0])
+
+    if ((epoch % 5 == 0) or (epoch + 1 == last_epoch)):
         print("Store Diagrams")
 
-        val_loss, pred, y, weight, PU_info = validate(model, test_dl, epoch+1, loss_obj=loss_obj, weighted="raw_energy", node_feature_dict=NeoGNNDataset.node_feature_dict)
+        val_loss, pred, y, weight, PU_info = validate(model, test_dl, epoch, loss_obj=loss_obj.focal, weighted="raw_energy")
         threshold = get_best_threshold(pred, y, weight)
         model.threshold = threshold
 
         print("weighted by raw energy:")
-        plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=model_folder, file_suffix=f"epoch_{epoch+1}_date_{date}")
-        plot_validation_results(pred, y, save=True, output_folder=model_folder, file_suffix=f"epoch_{epoch+1}_date_{date}", weight=weight)
-
-    if ((epoch+1) % 5 == 0):
-        print("Store Model")
-        save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"model_{date}", dummy_input=dataset_training[0])
+        plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=model_folder, file_suffix=f"epoch_{epoch}_date_{date}")
+        plot_validation_results(pred, y, save=True, output_folder=model_folder, file_suffix=f"epoch_{epoch}_date_{date}", weight=weight)
 
     early_stopping(model, val_loss)
     if early_stopping.early_stop:
-        print(f"Early stopping after {epoch+1} epochs")
+        print(f"Early stopping after {epoch} epochs")
         early_stopping.load_best_model(model)
 
         save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"model_{date}_final_loss_{-early_stopping.best_score:.4f}", dummy_input=dataset_training[0])

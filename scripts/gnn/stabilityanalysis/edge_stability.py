@@ -5,7 +5,7 @@ import torch
 from torch import jit
 from torch_geometric.loader.dataloader import DataLoader
 
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 from ticllearning.utils.dataStatistics import *
 from ticllearning.utils.dataUtils import *
 from ticllearning.utils.graphUtils import *
@@ -76,8 +76,8 @@ if __name__ == "__main__":
         y_base = (nn_pred > model.threshold).squeeze().int()
         y_base_comp = (nn_pred_comp > model.threshold).squeeze().int()
 
-        data_x = ((sample.x[sample.edge_index[:, 1], NeoGNNDataset.node_feature_dict["barycenter_x"]] + sample.x[sample.edge_index[:, 0], NeoGNNDataset.node_feature_dict["barycenter_x"]])/2).cpu()
-        data_y = ((sample.x[sample.edge_index[:, 1], NeoGNNDataset.node_feature_dict["barycenter_y"]] + sample.x[sample.edge_index[:, 0], NeoGNNDataset.node_feature_dict["barycenter_y"]])/2).cpu()
+        data_x = ((sample.x[sample.edge_index[:, 1]. NeoGNNDataset.node_feature_dict["barycenter_x"]] + sample.x[sample.edge_index[:, 0]. NeoGNNDataset.node_feature_dict["barycenter_x"]])/2).cpu()
+        data_y = ((sample.x[sample.edge_index[:, 1]. NeoGNNDataset.node_feature_dict["barycenter_y"]] + sample.x[sample.edge_index[:, 0]. NeoGNNDataset.node_feature_dict["barycenter_y"]])/2).cpu()
         #mapp.add_graph(data_x, data_y, (sample.PU_info[:, 1]).cpu())
         perturbated_data = perturbate(sample.x, num_samples=n_perturb, with_z=True)
 

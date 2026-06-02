@@ -4,7 +4,7 @@ import os.path as osp
 from torch_geometric.loader.dataloader import DataLoader
 
 from ticllearning.utils.graphUtils import *
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 
 import networkx as nx
 import numpy as np

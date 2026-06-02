@@ -1,18 +1,11 @@
 import os.path as osp
 import os
-from datetime import datetime
-import json
 from glob import glob
 
-import awkward as ak
-
 import torch
-from torch import jit
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch_geometric.loader.dataloader import DataLoader
-import matplotlib.pyplot as plt
 
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 from ticllearning.utils.dataStatistics import *
 from ticllearning.utils.graphUtils import *
 from ticllearning.utils.graphMetric import *
@@ -52,12 +45,12 @@ for graph_path in graph_folders:
     for file in files:
         print(file)
         metrics = torch.load(file, weights_only=False)
-        # print(torch.max(metrics["features"][:, NeoGNNDataset.node_feature_dict["barycenter_eta"]]))
+        # print(torch.max(metrics["features"][:. NeoGNNDataset.node_feature_dict["barycenter_eta"]]))
         
-        hm_dU_signal.add_graph(torch.abs(metrics["features"][~metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][~metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dU_Signal"] - metrics["comp_dU_Signal"])
-        hm_dO_signal.add_graph(torch.abs(metrics["features"][~metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][~metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dO_Signal"] - metrics["comp_dO_Signal"])
-        hm_dU_PU.add_graph(torch.abs(metrics["features"][metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dU_PU"] - metrics["comp_dU_PU"])
-        hm_dO_PU.add_graph(torch.abs(metrics["features"][metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][metrics["isPU"], NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dO_PU"] - metrics["comp_dO_PU"])
+        hm_dU_signal.add_graph(torch.abs(metrics["features"][~metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][~metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dU_Signal"] - metrics["comp_dU_Signal"])
+        hm_dO_signal.add_graph(torch.abs(metrics["features"][~metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][~metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dO_Signal"] - metrics["comp_dO_Signal"])
+        hm_dU_PU.add_graph(torch.abs(metrics["features"][metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dU_PU"] - metrics["comp_dU_PU"])
+        hm_dO_PU.add_graph(torch.abs(metrics["features"][metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_eta"]]).cpu(), metrics["features"][metrics["isPU"]. NeoGNNDataset.node_feature_dict["barycenter_phi"]].cpu(), baseline_metrics["comp_dO_PU"] - metrics["comp_dO_PU"])
 
 hm_dU_signal.plot(show_nodes=False, file="multi_heat_dU_signal", folder=output_folder)
 hm_dO_signal.plot(show_nodes=False, file="multi_heat_dO_signal", folder=output_folder)

@@ -1,8 +1,6 @@
-from glob import glob
-import ticllearning
 from ticllearning.utils.graphUtils import *
-from ticllearning.datasets.GNNDataset import GNNDataset
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset, load_branch_with_highest_cycle
+from ticllearning.datasets.gnn.dataset import GNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 
 from ticllearning.utils.dataUtils import *
 import os.path as osp

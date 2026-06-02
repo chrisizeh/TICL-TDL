@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 from ticllearning.utils.graphUtils import *
 
 def filter_nested_list(data, allowed):
@@ -13,7 +13,7 @@ def filter_nested_list(data, allowed):
         return data if data in allowed else None
 
 def calc_overlapping_components(graph_pred, node_values, true_components, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
-    node_energy = node_values[:, NeoGNNDataset.node_feature_dict["raw_energy"]]
+    node_energy = node_values[:NeoGNNDataset.node_feature_dict["raw_energy"]]
 
     pred_components = find_connected_components(graph_pred, node_energy.shape[0], device=device)
     overlapping_components = []
@@ -31,8 +31,8 @@ def calc_overlapping_components(graph_pred, node_values, true_components, device
 
 
 def component_dist(pred_component, true_component, node_features, cap_energy=None):
-    T_energy = torch.sum(node_features[true_component, NeoGNNDataset.node_feature_dict["raw_energy"]])
-    P_energy = torch.sum(node_features[pred_component, NeoGNNDataset.node_feature_dict["raw_energy"]])
+    T_energy = torch.sum(node_features[true_component. NeoGNNDataset.node_feature_dict["raw_energy"]])
+    P_energy = torch.sum(node_features[pred_component. NeoGNNDataset.node_feature_dict["raw_energy"]])
 
     if (cap_energy is None):
         print("IMPLEMENT P cap T calculation")
@@ -68,7 +68,7 @@ def graph_dist(graph_true, graph_pred, node_features, pu, device=torch.device('c
         for i, comp in enumerate(pred_components):
             overlap = np.intersect1d(component, comp)
             if(overlap.shape[0] > 0):
-                energy = torch.sum(node_features[overlap, NeoGNNDataset.node_feature_dict["raw_energy"]])
+                energy = torch.sum(node_features[overlap. NeoGNNDataset.node_feature_dict["raw_energy"]])
                 if (max_energy < energy):
                     max_energy = energy 
                     max_idx = i
@@ -76,13 +76,13 @@ def graph_dist(graph_true, graph_pred, node_features, pu, device=torch.device('c
         comp_dU, comp_dO = component_dist(pred_components[max_idx], component, node_features, max_energy)
 
         if (pu[component[0]]):
-            energy_PU += torch.sum(node_features[component, NeoGNNDataset.node_feature_dict["raw_energy"]]).item()
+            energy_PU += torch.sum(node_features[component. NeoGNNDataset.node_feature_dict["raw_energy"]]).item()
             dU_PU[cnt_pu] = comp_dU.item()
             dO_PU[cnt_pu] = comp_dO.item()
             cnt_pu += 1
             isPU[j] = 1
         else:
-            energy_Signal += torch.sum(node_features[component, NeoGNNDataset.node_feature_dict["raw_energy"]]).item()
+            energy_Signal += torch.sum(node_features[component. NeoGNNDataset.node_feature_dict["raw_energy"]]).item()
             dU_Signal[cnt_signal] = comp_dU.item()
             dO_Signal[cnt_signal] = comp_dO.item()
             cnt_signal += 1

@@ -6,7 +6,7 @@ import os.path as osp
 
 from torch_geometric.loader.dataloader import DataLoader
 
-from ticllearning.datasets.NeoGNNDataset import NeoGNNDataset
+from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 from ticllearning.utils.dataStatistics import *
 from ticllearning.utils.dataUtils import *
 from ticllearning.utils.perturbations.inErrorBars import *
