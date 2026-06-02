@@ -1,7 +1,6 @@
 import torch
 
-from ticllearning.datasets.GNNDataset import GNNDataset
-
+from ticllearning.datasets.gnn.dataset import GNNDataset
 
 # num_data is the maximal value, it can be less than that
 def perturbate(node_features, feature_name, max_val=0.001, num_data=100, device=torch.device('cuda' if torch.cuda.is_available() else "cpu")):

@@ -11,11 +11,11 @@ from concurrent.futures import wait, FIRST_COMPLETED
 import torch.multiprocessing as mp
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import *
-from ticllearning.utils.graphMetric import *
+from ticllearning.utils.data_statistics import *
+from ticllearning.utils.graph_utils import *
+from ticllearning.utils.graph_metric import *
 
-from ticllearning.utils.perturbations.inErrorBars import perturbate
+from ticllearning.utils.perturbations.in_error_bars import perturbate
 
 def wait_some(futures):
     """Wait until at least one future completes, return (done, not_done)."""

@@ -6,10 +6,10 @@ import torch
 from torch_geometric.loader.dataloader import DataLoader
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import *
-from ticllearning.utils.graphMetric import *
-from ticllearning.utils.graphHeatMap import GraphHeatmap
+from ticllearning.utils.data_statistics import *
+from ticllearning.utils.graph_utils import *
+from ticllearning.utils.graph_metric import *
+from ticllearning.utils.graph_heatmap import GraphHeatmap
 
 base_folder = "/data/czeh"
 run_name = "0002_model_large_contr_att"

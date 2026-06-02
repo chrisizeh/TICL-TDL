@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
-from collections import defaultdict
 
 from scipy.spatial import cKDTree
 import numpy.ma as ma

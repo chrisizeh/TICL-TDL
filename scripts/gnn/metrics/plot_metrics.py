@@ -2,7 +2,7 @@ import os.path as osp
 from glob import glob
 
 import torch
-from ticllearning.utils.graphHeatMap import GraphHeatmap
+from ticllearning.utils.graph_heatmap import GraphHeatmap
 
 
 

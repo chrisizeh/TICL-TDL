@@ -1,4 +1,4 @@
-from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graph_utils import *
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 
 import os.path as osp

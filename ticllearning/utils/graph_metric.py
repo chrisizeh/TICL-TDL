@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graph_utils import *
 
 def filter_nested_list(data, allowed):
     if isinstance(data, list):

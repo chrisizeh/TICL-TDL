@@ -5,10 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import torch
-from sklearn.metrics import confusion_matrix, roc_curve, auc, f1_score, balanced_accuracy_score, recall_score, precision_score
-from sklearn.utils.class_weight import compute_sample_weight
-from sklearn.metrics import class_likelihood_ratios, precision_recall_fscore_support, accuracy_score
-from ticllearning.utils.dataStatistics import weighted_precision_recall_f1, weighted_precision_recall_f1_from_precalc
+from sklearn.metrics import confusion_matrix, roc_curve, auc, recall_score, precision_score
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from ticllearning.utils.data_statistics import weighted_precision_recall_f1, weighted_precision_recall_f1_from_precalc
 
 import seaborn as sn
 """Testing of the trained models."""

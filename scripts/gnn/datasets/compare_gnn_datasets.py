@@ -1,8 +1,8 @@
-from ticllearning.utils.graphUtils import *
+from ticllearning.utils.graph_utils import *
 from ticllearning.datasets.gnn.dataset import GNNDataset
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 
-from ticllearning.utils.dataUtils import *
+from ticllearning.utils.data_utils import *
 import os.path as osp
 import multiprocessing as mp
 

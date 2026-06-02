@@ -6,11 +6,11 @@ from torch import jit
 from torch_geometric.loader.dataloader import DataLoader
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import *
-from ticllearning.utils.graphMetric import *
+from ticllearning.utils.data_statistics import *
+from ticllearning.utils.graph_utils import *
+from ticllearning.utils.graph_metric import *
 
-from ticllearning.utils.perturbations.stabilityMap import *
+from ticllearning.utils.perturbations.stability_map import *
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from concurrent.futures import wait, FIRST_COMPLETED

@@ -6,14 +6,11 @@ import awkward as ak
 import numpy as np
 import cupy as cp
 
-import joblib
-from tqdm import tqdm
-
 import torch
 from torch_geometric.data import Dataset, Data
 
-from ticllearning.utils.graphUtils import build_ticl_graph
-from ticllearning.utils.dataUtils import *
+from ticllearning.utils.graph_utils import build_ticl_graph
+from ticllearning.utils.data_utils import *
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 

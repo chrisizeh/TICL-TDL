@@ -6,9 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn.metrics import confusion_matrix, f1_score
-
-
 def save_model(model, epoch, optimizer, loss, val_loss, output_folder, filename, dummy_input=None):
     path = os.path.join(output_folder, f"{filename}")
 
@@ -21,7 +18,7 @@ def save_model(model, epoch, optimizer, loss, val_loss, output_folder, filename,
                 }, f"{path}_epoch_{epoch}_dict.pt")
     
     if (dummy_input is not None):
-        # TODO: Move model to cpu before tracing
+        # Move model to cpu before tracing
         dump_model = copy.deepcopy(model)
         dump_model.to("cpu")
 

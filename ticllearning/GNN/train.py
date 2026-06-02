@@ -4,10 +4,10 @@ import random
 
 import torch
 
-from tracksterLinker.gnn.loss_functions import FocalLoss
-from tracksterLinker.datasets.GNNDataset import GNNDataset
-from tracksterLinker.utils.dataUtils import calc_weights
-from tracksterLinker.utils.perturbations.inErrorBars import *
+from ticllearning.gnn.loss_function import FocalLoss
+from ticllearning.datasets.gnn.dataset import GNNDataset
+from ticllearning.utils.data_utils import calc_weights
+from ticllearning.utils.perturbations.in_error_bars import *
 
 def train(model, opt, loader, epoch, weighted="raw_energy", scores=False, emb_out=False, loss_obj=FocalLoss(), node_feature_dict=GNNDataset.node_feature_dict):
 
