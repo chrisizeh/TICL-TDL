@@ -19,8 +19,10 @@ class CellClassifier(nn.Module):
     def forward(self, x, hasse_laplacian):
         x = self.encoder(x)
 
+
         for layer in self.layers:
             x = x + layer(x, hasse_laplacian)
 
-        return torch.sigmoid(self.decoder(x))
+        x = self.decoder(x)
+        return x
 

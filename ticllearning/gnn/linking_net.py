@@ -3,39 +3,11 @@ import torch.nn as nn
 
 from ticllearning.gnn.edge_conv_block import EdgeConvBlock
 
-
 def weight_init(m):
     if isinstance(m, torch.nn.Conv2d) or isinstance(m, torch.nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight)
         if m.bias is not None:
             m.bias.data.fill_(0.)
-
-
-class EarlyStopping:
-    def __init__(self, patience=5, delta=0):
-        self.patience = patience
-        self.delta = delta
-        self.best_score = None
-        self.early_stop = False
-        self.counter = 0
-        self.best_model_state = None
-
-    def __call__(self, model, val_loss):
-        if self.best_score is None:
-            self.best_score = val_loss
-            self.best_model_state = model.state_dict()
-        elif val_loss > self.best_score + self.delta:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
-        else:
-            if val_loss < self.best_score:
-                self.best_score = val_loss
-                self.best_model_state = model.state_dict()
-            self.counter = 0
-
-    def load_best_model(self, model):
-        model.load_state_dict(self.best_model_state)
 
 class GNNLinkingNet(nn.Module):
     def __init__(self, input_dim=19, hidden_dim=16, output_dim=1, niters=2, dropout=0.2,

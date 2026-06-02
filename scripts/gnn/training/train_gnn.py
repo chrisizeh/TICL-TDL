@@ -8,12 +8,14 @@ from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.gnn.linking_net import GNNLinkingNet, EarlyStopping, weight_init
+from ticllearning.gnn.linking_net import GNNLinkingNet, weight_init
+from ticllearning.utils.training.early_stopping import EarlyStopping
 from ticllearning.gnn.loss_function import *
 from ticllearning.gnn.train import *
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import negative_edge_imbalance
-from ticllearning.utils.plotResults import *
+from ticllearning.utils.data_statistics import *
+from ticllearning.utils.training.save_model import save_model
+from ticllearning.utils.graph_utils import negative_edge_imbalance
+from ticllearning.utils.plot_results import *
 
 
 # No ready trained model for this available
@@ -80,10 +82,10 @@ val_loss_hist = []
 
 for epoch in range(start_epoch, start_epoch+epochs):
     print(f'Epoch: {epoch+1}')
-    loss = train(model, optimizer, train_dl, epoch+1, loss_obj=loss_obj, node_feature_dic. NeoGNNDataset.node_feature_dict)
+    loss = train(model, optimizer, train_dl, epoch+1, loss_obj=loss_obj, node_feature_dict=NeoGNNDataset.node_feature_dict)
     train_loss_hist.append(loss)
 
-    val_loss, cross_edges, signal_edges, pu_edges = test(model, test_dl, epoch+1, loss_obj=loss_obj, device=device, weighted="raw_energy", node_feature_dic. NeoGNNDataset.node_feature_dict)
+    val_loss, cross_edges, signal_edges, pu_edges = test(model, test_dl, epoch+1, loss_obj=loss_obj, device=device, weighted="raw_energy", node_feature_dict=NeoGNNDataset.node_feature_dict)
     val_loss_hist.append(val_loss)
     print(f'Training loss: {loss}, Validation loss: {val_loss}, Learning Rate: {scheduler.get_last_lr()}')
 
@@ -100,7 +102,7 @@ for epoch in range(start_epoch, start_epoch+epochs):
     if ((epoch+1) % 10 == 0):
         print("Store Diagrams")
 
-        val_loss, pred, y, weight, PU_info = validate(model, test_dl, epoch+1, loss_obj=loss_obj, weighted="raw_energy", node_feature_dic. NeoGNNDataset.node_feature_dict)
+        val_loss, pred, y, weight, PU_info = validate(model, test_dl, epoch+1, loss_obj=loss_obj, weighted="raw_energy", node_feature_dict=NeoGNNDataset.node_feature_dict)
         threshold = get_best_threshold(pred, y, weight)
         model.threshold = threshold
 

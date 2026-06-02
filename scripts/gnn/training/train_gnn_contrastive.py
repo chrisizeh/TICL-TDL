@@ -8,13 +8,15 @@ from torch_geometric.loader.dataloader import DataLoader
 import matplotlib.pyplot as plt
 
 from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
-from ticllearning.gnn.linking_net import EarlyStopping, weight_init
+from ticllearning.gnn.linking_net import weight_init
+from ticllearning.utils.training.early_stopping import EarlyStopping
 from ticllearning.gnn.attention_net import GNNAttentionLinkingNet
 from ticllearning.gnn.loss_function import *
 from ticllearning.gnn.train import *
-from ticllearning.utils.dataStatistics import *
-from ticllearning.utils.graphUtils import negative_edge_imbalance
-from ticllearning.utils.plotResults import *
+from ticllearning.utils.data_statistics import *
+from ticllearning.utils.training.save_model import save_model
+from ticllearning.utils.graph_utils import negative_edge_imbalance
+from ticllearning.utils.plot_results import *
 
 
 # Change to False to start training new model

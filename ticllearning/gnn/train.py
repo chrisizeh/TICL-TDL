@@ -10,7 +10,6 @@ from ticllearning.utils.data_utils import calc_weights
 from ticllearning.utils.perturbations.in_error_bars import *
 
 def train(model, opt, loader, epoch, weighted="raw_energy", scores=False, emb_out=False, loss_obj=FocalLoss(), node_feature_dict=GNNDataset.node_feature_dict):
-
     epoch_loss = 0
 
     model.train()
