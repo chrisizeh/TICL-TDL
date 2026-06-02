@@ -3,11 +3,11 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tracksterLinker"
+name = "ticl-learning"
 version = "0.1.0"
-description = "A package for linking tracksters using a GNN or a Transformers"
+description = "A package for training ML models on TICL data"
 authors = [
-  { name = "Christine Zeh", email = "me@christinezeh.com" }
+  { name = "Christine Zeh", email = "christine.zeh@cern.ch" }
 ]
 dependencies = [
   # Add runtime dependencies here, e.g.:
