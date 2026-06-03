@@ -11,9 +11,9 @@ from ticllearning.datasets.gnn.prebuild_dataset import NeoGNNDataset
 from ticllearning.gnn.linking_net import weight_init
 from ticllearning.utils.training.early_stopping import EarlyStopping
 from ticllearning.gnn.attention_net import GNNAttentionLinkingNet
-from ticllearning.gnn.loss_function import *
 from ticllearning.gnn.train import *
 from ticllearning.utils.data_statistics import *
+from ticllearning.utils.training.loss_function import *
 from ticllearning.utils.training.save_model import save_model
 from ticllearning.utils.graph_utils import negative_edge_imbalance
 from ticllearning.utils.plot_results import *
@@ -32,7 +32,7 @@ os.makedirs(model_folder, exist_ok=True)
 
 # Prepare Dataset
 batch_size = 1
-# Datset stored at patatrack-bg-01.cern.ch
+# Dataset stored at patatrack-bg-01.cern.ch
 dataset_training = NeoGNNDataset(data_folder_training, only_signal=False)
 dataset_test = NeoGNNDataset(data_folder_test, test=True, only_signal=False)
 train_dl = DataLoader(dataset_training, shuffle=True, batch_size=batch_size)

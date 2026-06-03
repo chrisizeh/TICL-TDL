@@ -4,7 +4,7 @@ import random
 
 import torch
 
-from ticllearning.gnn.loss_function import FocalLoss
+from ticllearning.utils.training.loss_function import FocalLoss
 from ticllearning.datasets.gnn.dataset import GNNDataset
 from ticllearning.utils.data_utils import calc_weights
 from ticllearning.utils.perturbations.in_error_bars import *

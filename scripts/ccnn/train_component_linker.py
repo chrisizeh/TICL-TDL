@@ -4,7 +4,7 @@ from ticllearning.cclinking.component_classifier import CellClassifier
 from ticllearning.cclinking.train import train_model
 
 if __name__ == "__main__":
-    info = "multi_pion_close_train"
+    info = "multi_pion_close"
 
     in_channels = 4
     hidden_channels = 4
