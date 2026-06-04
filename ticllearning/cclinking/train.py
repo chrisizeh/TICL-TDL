@@ -13,6 +13,7 @@ from ticllearning.utils.training.save_model import save_model
 from ticllearning.utils.data_statistics import plot_loss
 from ticllearning.utils.plot_results import *
 from ticllearning.utils.training.early_stopping import EarlyStopping
+from ticllearning.utils.graph_utils import negative_edge_imbalance
 
 def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
     epoch_loss = 0
@@ -106,8 +107,8 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             z = model(sample.x, sample.L)
             z = z[:-sample.num_rank2]
             
-            pred += z.tolist()
-            ys += sample.y.tolist()
+            pred += z.squeeze(-1).tolist()
+            ys += sample.y.squeeze(-1).tolist()
 
             # rescale weights to interval [0, 1]
             weight = sample.x.clone().detach()[:-sample.num_rank2, -1]
@@ -122,7 +123,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         val_loss /= len(data)
     return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(weights)
 
-def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5):
+def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5, max_events=None):
     date = f"{datetime.now():%Y-%m-%d}"
     run_name = f"{date}_{experiment_name}_{dataset}"
 
@@ -132,17 +133,20 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
     os.makedirs(plot_folder, exist_ok=True)
 
     batch_size = 1
-    train_dataset = CCDataset(dataset, config, test=False)
-    test_dataset = CCDataset(dataset, config, test=True, node_scaler=train_dataset.node_scaler)
-    print(train_dataset)
+    train_dataset = CCDataset(dataset, config, test=False, max_events=max_events)
+    test_events = int(max_events*0.2) if max_events is not None else None
+    test_dataset = CCDataset(dataset, config, test=True, max_events=test_events, node_scaler=train_dataset.node_scaler)
     train_dl = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_dl = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
 
     # Prepare Model
     model = model.to(config.device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    model.add_scaler(train_dataset.node_scaler)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-    loss_obj = FocalLossLogits(alpha=0.7, gamma=2)
+    alpha = 0.5 + negative_edge_imbalance(train_dataset)/2
+    print("alpha: ", alpha)
+    loss_obj = FocalLossLogits(alpha=alpha, gamma=2)
     early_stopping = EarlyStopping(patience=20, delta=0)
     scheduler = CosineAnnealingLR(optimizer, start_epoch+epochs, eta_min=1e-6)
 
@@ -163,18 +167,18 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
         print("Fast statistic on model threshold:")
         print_acc_scores_from_precalc(*stats)
         
-        if ((epoch) % 10 == 0):
+        if ((epoch) % 10 == 0 and epoch != 0):
             print("Store Diagrams")
 
-            val_loss, pred, y, weight = validate_epoch(epoch+1, model, test_dl, loss_obj, config, threshold=threshold)
+            val_loss, pred, y, weight = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
 
             print("weighted by raw energy:")
             plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}")
             plot_validation_results(pred, y, save=True, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", weight=weight)
 
-        if ((epoch) % 5 == 0):
+        if ((epoch) % 10 == 0 and epoch != 0):
             print("Store Model")
-            save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"model_{date}")
+            save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"{run_name}")
 
         early_stopping(model, val_loss)
         if early_stopping.early_stop:

@@ -14,11 +14,10 @@ class WeightedHasseMP(MessagePassing):
             nn.Linear(channels, channels, dtype=torch.float64),
         )
 
-        self.att_nn = nn.Sequential(
-            nn.Linear(2 * channels + 1, channels, dtype=torch.float64),
-            nn.ReLU(),
-            nn.Linear(channels, 1, dtype=torch.float64),
-        )
+        self.att_src = nn.Linear(channels, 1, dtype=torch.float64)
+        self.att_dst = nn.Linear(channels, 1, dtype=torch.float64)
+        self.att_w = nn.Linear(1, 1, bias=False, dtype=torch.float64)
+        self.att_out = nn.Linear(channels, 1, dtype=torch.float64)
 
         self.update = nn.Sequential(
             nn.Linear(2 * channels, channels, dtype=torch.float64),
@@ -29,38 +28,17 @@ class WeightedHasseMP(MessagePassing):
     def message(self, x_source, x_target=None):
         return self.message_nn(x_source)
 
-def forward(self, x, A):
-    A = A.coalesce()
+    def forward(self, x, A):
+        src = self.att_src(x)
+        dst = self.att_dst(x)
+        w = self.att_w(A[..., None]).squeeze(-1)
 
-    edge_index = A.indices()
-    edge_weight = A.values().to(dtype=x.dtype)
+        alpha = src + dst + w 
+        alpha = alpha.masked_fill(
+            torch.eye(A.shape[0], device=A.device, dtype=torch.bool),
+            -1e9,
+        )
+        alpha = torch.softmax(alpha, dim=1) * A.abs()
+        msg = alpha @ self.message_nn(x)
 
-    src = edge_index[1]
-    dst = edge_index[0]
-
-    mask = src != dst
-    src = src[mask]
-    dst = dst[mask]
-    edge_weight = edge_weight[mask]
-
-    h_src = x[src]
-    h_dst = x[dst]
-
-    att_input = torch.cat(
-        [h_dst, h_src, edge_weight[:, None]],
-        dim=-1,
-    )
-
-    alpha = torch.sigmoid(self.att_nn(att_input))
-    msg_edges = alpha * edge_weight[:, None] * self.message_nn(h_src)
-
-    msg = torch.zeros(
-        x.shape[0],
-        msg_edges.shape[1],
-        device=x.device,
-        dtype=x.dtype,
-    )
-
-    msg = msg.index_add(0, dst, msg_edges)
-
-    return self.update(torch.cat([x, msg], dim=-1))
+        return self.update(torch.cat([x, msg], dim=-1))

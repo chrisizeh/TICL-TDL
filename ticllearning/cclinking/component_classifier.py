@@ -16,12 +16,18 @@ class CellClassifier(nn.Module):
 
         self.decoder = nn.Linear(hidden_channels, out_channels, dtype=torch.float64)
 
+
+    def add_scaler(self, node_scaler):
+        self.register_buffer("node_scaler", node_scaler)
+
+
     def forward(self, x, hasse_laplacian):
+        x = x / self.node_scaler
         x = self.encoder(x)
 
 
         for layer in self.layers:
-            x = x + layer(x, hasse_laplacian)
+            x = x + layer.forward(x, hasse_laplacian)
 
         x = self.decoder(x)
         return x

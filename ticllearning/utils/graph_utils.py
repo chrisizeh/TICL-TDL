@@ -106,7 +106,7 @@ def get_component_features(components, node_values):
 def calc_missing_energy(graph_true, graph_pred, node_values, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     true_energy = []
     pred_energy = []
-    node_energy = node_values[:. NeoGNNDataset.node_feature_dict["raw_energy"]]
+    node_energy = node_values[:NeoGNNDataset.node_feature_dict["raw_energy"]]
 
     true_components = find_connected_components(graph_true, node_energy.shape[0], device=device)
     pred_components = find_connected_components(graph_pred, node_energy.shape[0], device=device)

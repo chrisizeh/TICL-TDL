@@ -2,6 +2,7 @@ import os
 import os.path as osp
 from glob import glob
 from tqdm import tqdm
+import re
 
 import uproot as uproot
 import torch
@@ -12,6 +13,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from awkward_complex.classes.spectral import Spectral
 from awkward_complex.datasets.cern.build import CERN
+
+import warnings
+warnings.filterwarnings("ignore")
 
 class CCData(Data):
     def __init__(self, x, L, y, num_nodes, num_rank2):
@@ -30,6 +34,7 @@ def process_event(idx, sample, histo_data, dataset_dir):
     _, L_adj, _ = Spectral.full_graded_laplacian(cc)
     L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
     L_adj[L_adj == 0] = 10e-8
+    L_adj = Spectral.normalize_matrix(L_adj)
     assoc = histo_data.get_associations(sample)
 
     rank2_cells = cc._num_cells_at_rank(2)
@@ -41,8 +46,8 @@ def process_event(idx, sample, histo_data, dataset_dir):
     y = y[:-rank2_cells]
 
     # Read data from `raw_path`.
-    data = CCData(x, L_adj.to_sparse(), y, y.shape[0], rank2_cells)
-    torch.save(data, osp.join(dataset_dir, f'data_{idx+sample}.pt'))
+    data = CCData(x, L_adj, y, y.shape[0], rank2_cells)
+    torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
     return torch.max(torch.abs(x), axis=0).values
 
 class CCDataset(Dataset):
@@ -50,11 +55,12 @@ class CCDataset(Dataset):
     #node_feature_dict = {k: v for v, k in enumerate(node_feature_keys)}
     #model_feature_keys = node_feature_keys
 
-    def __init__(self, data_info, config, test=False, skeleton_features=False, node_scaler=None, num_workers=24):
+    def __init__(self, data_info, config, test=False, skeleton_features=False, node_scaler=None, num_workers=24, max_events=None):
         self.test = test
         self.skeleton_features = skeleton_features
         self.device = config.device
         self.num_workers = num_workers
+        self.max_events = max_events
 
         self.data_info = data_info
         self.output_folder = osp.join(config.data, data_info)
@@ -75,40 +81,54 @@ class CCDataset(Dataset):
 
     @property
     def processed_file_names(self):
-        return glob(f"{self.data_folder}/data_*.pt")
+        return sorted(glob(f"{self.data_folder}/data_*.pt"), key=os.path.basename) 
 
     def process(self):
         if osp.isfile(osp.join(self.data_folder, "DONE")):
             return
 
-        idx = 0
-        files = glob(f"{self.input_folder}/test/*.root")
+        if self.test:
+            files = glob(f"{self.input_folder}/test/*.root")
+        else:
+            files = glob(f"{self.input_folder}/train/*.root")
         os.makedirs(self.data_folder, exist_ok=True)
 
-        with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
-            for file in tqdm(files):
-                histo_data = CERN(file, self.device)
-                futures = [executor.submit(process_event, idx, sample, histo_data, self.data_folder) for sample in range(histo_data.n_events)]
-                idx += histo_data.n_events
+        histo_data = CERN(files[0], self.device)
+        remaining_events = len(files)*histo_data.n_events
+        if self.max_events is not None:
+            remaining_events = self.max_events
 
-                for future in as_completed(futures):
-                    max_features = future.result()
-                    if (not self.test and max_features is not None):
-                        if self.node_scaler is not None:
-                            self.node_scaler = torch.maximum(self.node_scaler, max_features)
-                        else:
-                            self.node_scaler = max_features
+        idx = 0
+        with tqdm(total=remaining_events) as pbar:
+            with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
+                for file in files:
+                    histo_data = CERN(file, self.device)
+
+                    if (self.max_events is None or remaining_events >= histo_data.n_events):
+                        futures = [executor.submit(process_event, idx, sample, histo_data, self.data_folder) for sample in range(histo_data.n_events)]
+                        idx += histo_data.n_events
+                    else:
+                        futures = [executor.submit(process_event, idx, sample, histo_data, self.data_folder) for sample in range(remaining_events)]
+
+                    remaining_events -=  histo_data.n_events
+                    for future in as_completed(futures):
+                        pbar.update(1)
+                        max_features = future.result()
+                        if (not self.test and max_features is not None):
+                            if self.node_scaler is not None:
+                                self.node_scaler = torch.maximum(self.node_scaler, max_features)
+                            else:
+                                self.node_scaler = max_features
 
         if (not self.test):
             torch.save(self.node_scaler, osp.join(self.output_folder, "node_scaler.pt"))
 
         idx = 0
-        for i, file in tqdm(enumerate(self.processed_file_names), desc="Fixing holes"):
-            sample = torch.load(file, weights_only=False)
-
-            if (i != idx):
+        for file in tqdm(self.processed_file_names, desc="Fixing holes"):
+            if (int(re.findall(r'\d+', file)[-1]) != idx):
+                sample = torch.load(file, weights_only=False)
                 os.remove(file)
-            torch.save(sample, osp.join(self.output_folder, f"data_{idx}.pt"))
+                torch.save(sample, osp.join(self.data_folder, f"data_{idx:05d}.pt"))
             idx += 1
         torch.save([], osp.join(self.data_folder, "DONE"))
 
@@ -120,4 +140,4 @@ class CCDataset(Dataset):
             yield self[i]
 
     def __getitem__(self, idx):
-        return torch.load(osp.join(self.data_folder, f'data_{idx}.pt'), weights_only=False)
+        return torch.load(osp.join(self.data_folder, f'data_{idx:05d}.pt'), weights_only=False)

@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 import torch.nn.functional as F
 from torch_geometric.data import Data
 
-from ticllearning.utils.dataUtils import calc_weights, cross_PU, mask_PU 
+from ticllearning.utils.data_utils import calc_weights, cross_PU, mask_PU 
 
 from collections.abc import Sequence
 from typing import Callable

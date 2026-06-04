@@ -56,7 +56,7 @@ def plot_binned_validation_results(pred, y, weights, thres=0.65, output_folder=N
     bin_vals = []
     for i in range(len(bin_edges)-1):
         in_bin = (weights >= bin_edges[i]) & (weights < bin_edges[i+1])
-        if in_bin.sum() > 0:  # avoid empty bins
+        if in_bin.sum() > 100:
             acc = accuracy_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
             prec = precision_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
             rec = recall_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
