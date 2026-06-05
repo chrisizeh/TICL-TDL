@@ -1,5 +1,8 @@
 import torch
-import cupy as cp
+try:
+    import cupy as cp
+except:
+    import numpy as cp
 import awkward as ak
 
 from collections import defaultdict

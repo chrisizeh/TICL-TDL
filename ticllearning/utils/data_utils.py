@@ -1,7 +1,11 @@
-import cupy as cp
 import numpy as np
 import awkward as ak
 import torch
+
+try:
+    import cupy as cp
+except:
+    import numpy as cp
 
 from sklearn.neighbors import KDTree
 

@@ -4,7 +4,11 @@ from glob import glob
 import uproot as uproot
 import awkward as ak
 import numpy as np
-import cupy as cp
+
+try:
+    import cupy as cp
+except:
+    import numpy as cp
 
 import torch
 from torch_geometric.data import Dataset, Data

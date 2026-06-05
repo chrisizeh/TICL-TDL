@@ -1,7 +1,11 @@
 import os
 import os.path as osp
 from glob import glob
-import cupy as cp
+
+try:
+    import cupy as cp
+except:
+    import numpy as cp
 
 import awkward as ak
 import torch
