@@ -8,6 +8,7 @@ import uproot as uproot
 import torch
 from torch.utils.data import Dataset
 from torch_geometric.data import Data
+import awkward as ak
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -18,10 +19,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class CCData(Data):
-    def __init__(self, x, L, y, num_nodes, num_rank2):
+    def __init__(self, x, L, ranks, y, num_nodes, num_rank2):
         super().__init__()
         self.x = x
         self.L = L
+        self.ranks = ranks
         self.num_nodes = num_nodes
         self.num_rank2 = num_rank2
         self.y = y
@@ -29,24 +31,36 @@ class CCData(Data):
 def process_event(idx, sample, histo_data, dataset_dir):
     cc = histo_data.build_cc(sample)
     cc = histo_data.add_skeleton_graph(cc, sample)
+
     x = cc.get_features()
     x = x[:-cc._num_cells_at_rank(3)]
+
+    # TODO: Work also with isolated cluster
+    cell_mask = torch.ones(x.shape[0]).bool()
+    cell_mask[:cc.num_nodes] = cc.get_connected_nodes_mask()
+    x = x[cell_mask, :]
+
     _, L_adj, _ = Spectral.full_graded_laplacian(cc)
     L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
     L_adj[L_adj == 0] = 10e-8
     L_adj = Spectral.normalize_matrix(L_adj)
-    assoc = histo_data.get_associations(sample)
+    L_adj = L_adj[cell_mask][:, cell_mask]
 
     rank2_cells = cc._num_cells_at_rank(2)
+    assoc = histo_data.get_associations(sample)
     y = assoc
+
     y[:cc.num_nodes] = cc.incidence_matrix(0, 2) @ assoc[-rank2_cells:] == assoc[:cc.num_nodes]
     y[cc.num_nodes:-rank2_cells] = cc.incidence_matrix(1, 2) @ assoc[-rank2_cells:] == assoc[cc.num_nodes:-rank2_cells]
-    y[-rank2_cells:] = 1
-    y = y.unsqueeze(1)
+    y = y[cell_mask]
     y = y[:-rank2_cells]
+    y = y.unsqueeze(1)
 
-    # Read data from `raw_path`.
-    data = CCData(x, L_adj, y, y.shape[0], rank2_cells)
+    ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(cc.device)
+    ranks = ranks[:-cc._num_cells_at_rank(3)]
+    ranks = ranks[cell_mask]
+
+    data = CCData(x, L_adj.to_sparse(), ranks, y, y.shape[0], rank2_cells)
     torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
     return torch.max(torch.abs(x), axis=0).values
 
