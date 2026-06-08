@@ -26,7 +26,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         # reset optimizer and enable training mode
         optimizer.zero_grad(set_to_none=True)
 
-        z = model(sample.x, sample.L)
+        z = model(sample.x, sample.L, sample.ranks)
         z = z[:-sample.num_rank2]
         
         # rescale weights to interval [0, 1]
@@ -68,7 +68,7 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
         stats = torch.zeros(4, device=config.device)
             
         for sample in tqdm(data, desc=f"Test Epoch {epoch}"):
-            z = model(sample.x, sample.L)
+            z = model(sample.x, sample.L, sample.ranks)
             z = z[:-sample.num_rank2]
             
             # rescale weights to interval [0, 1]
@@ -104,7 +104,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         pred, ys, weights = [], [], []
             
         for sample in tqdm(data, desc=f"Validation Epoch {epoch}"):
-            z = model(sample.x, sample.L)
+            z = model(sample.x, sample.L, sample.ranks)
             z = z[:-sample.num_rank2]
             
             pred += z.squeeze(-1).tolist()
@@ -123,7 +123,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         val_loss /= len(data)
     return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(weights)
 
-def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5, max_events=None):
+def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5, max_events=None, debug=False):
     date = f"{datetime.now():%Y-%m-%d}"
     run_name = f"{date}_{experiment_name}_{dataset}"
 
@@ -134,7 +134,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
 
     batch_size = 1
     train_dataset = CCDataset(dataset, config, test=False, max_events=max_events)
-    test_events = int(max_events*0.2) if max_events is not None else None
+    test_events = int(np.round(max_events*0.2)) if max_events is not None else None
     test_dataset = CCDataset(dataset, config, test=True, max_events=test_events, node_scaler=train_dataset.node_scaler)
     train_dl = DataLoader(train_dataset, shuffle=True, batch_size=batch_size)
     test_dl = DataLoader(test_dataset, shuffle=True, batch_size=batch_size)
@@ -167,7 +167,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
         print("Fast statistic on model threshold:")
         print_acc_scores_from_precalc(*stats)
         
-        if ((epoch) % 10 == 0 and epoch != 0):
+        if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Diagrams")
 
             val_loss, pred, y, weight = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
@@ -176,7 +176,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
             plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}")
             plot_validation_results(pred, y, save=True, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", weight=weight)
 
-        if ((epoch) % 10 == 0 and epoch != 0):
+        if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Model")
             save_model(model, epoch, optimizer, train_loss_hist, val_loss_hist, output_folder=model_folder, filename=f"{run_name}")
 
