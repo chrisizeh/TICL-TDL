@@ -42,7 +42,6 @@ def process_event(idx, sample, histo_data, dataset_dir):
 
     _, L_adj, _ = Spectral.full_graded_laplacian(cc)
     L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
-    L_adj[L_adj == 0] = 10e-8
     L_adj = Spectral.normalize_matrix(L_adj)
     L_adj = L_adj[cell_mask][:, cell_mask]
 
@@ -122,6 +121,7 @@ class CCDataset(Dataset):
                         futures = [executor.submit(process_event, idx, sample, histo_data, self.data_folder) for sample in range(histo_data.n_events)]
                         idx += histo_data.n_events
                     else:
+                        #process_event(idx, 0, histo_data, self.data_folder)
                         futures = [executor.submit(process_event, idx, sample, histo_data, self.data_folder) for sample in range(remaining_events)]
 
                     remaining_events -=  histo_data.n_events
@@ -135,7 +135,7 @@ class CCDataset(Dataset):
                                 self.node_scaler = max_features
 
         if (not self.test):
-            torch.save(self.node_scaler, osp.join(self.output_folder, "node_scaler.pt"))
+            torch.save(self.node_scaler.float().to(self.device), osp.join(self.output_folder, "node_scaler.pt"))
 
         idx = 0
         for file in tqdm(self.processed_file_names, desc="Fixing holes"):
