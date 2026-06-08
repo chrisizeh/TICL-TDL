@@ -142,7 +142,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
     # Prepare Model
     model = model.to(config.device)
     model.add_scaler(train_dataset.node_scaler)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     alpha = 0.5 + negative_edge_imbalance(train_dataset)/2
     print("alpha: ", alpha)
