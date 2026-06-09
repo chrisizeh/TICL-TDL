@@ -4,8 +4,15 @@ from torch import nn
 from ticllearning.cclinking.hasse_message_passing import HasseMP
 from ticllearning.cclinking.connection_attention import ReweightConnection
 
+class Placeholder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, L, ranks):
+        return L
+
 class CellClassifier(nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, num_ranks):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, num_ranks, attention=True):
         super().__init__()
 
         self.encoder = nn.Sequential(
@@ -13,7 +20,11 @@ class CellClassifier(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_channels, hidden_channels),
         )
-        self.connection_attention = ReweightConnection(hidden_channels, num_ranks)
+
+        if attention:
+            self.connection_attention = ReweightConnection(hidden_channels, num_ranks)
+        else:
+            self.connection_attention = Placeholder()
 
         self.layers = nn.ModuleList(
             HasseMP(hidden_channels, num_ranks)
@@ -31,7 +42,7 @@ class CellClassifier(nn.Module):
 
 
     def forward(self, x, L, ranks):
-        x = x / self.node_scaler
+        x = (x / self.node_scaler).float()
         x = self.encoder(x)
 
         L = self.connection_attention(x, L, ranks)
