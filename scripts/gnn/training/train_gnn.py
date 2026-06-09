@@ -107,7 +107,7 @@ for epoch in range(start_epoch, start_epoch+epochs):
         model.threshold = threshold
 
         print("weighted by raw energy:")
-        plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=model_folder, file_suffix=f"epoch_{epoch+1}_date_{date}")
+        plot_binned_validation_results(pred, y, weight, weight, thres=threshold, output_folder=model_folder, file_suffix=f"epoch_{epoch+1}_date_{date}")
         plot_validation_results(pred, y, save=True, output_folder=model_folder, file_suffix=f"epoch_{epoch+1}_date_{date}", weight=weight)
 
     if ((epoch+1) % 5 == 0):

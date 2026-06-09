@@ -101,7 +101,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         model.eval()
         val_loss = 0.0
 
-        pred, ys, weights = [], [], []
+        pred, ys, weights, ranks = [], [], [], []
             
         for sample in tqdm(data, desc=f"Validation Epoch {epoch}"):
             z = model(sample.x, sample.L, sample.ranks)
@@ -109,6 +109,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             
             pred += z.squeeze(-1).tolist()
             ys += sample.y.squeeze(-1).tolist()
+            ranks += sample.ranks[:-sample.num_rank2].squeeze(-1).tolist()
 
             # rescale weights to interval [0, 1]
             weight = sample.x.clone().detach()[:-sample.num_rank2, -1]
@@ -121,7 +122,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             val_loss += loss
 
         val_loss /= len(data)
-    return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(weights)
+    return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(weights), torch.Tensor(ranks)
 
 def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5, max_events=None, debug=False):
     date = f"{datetime.now():%Y-%m-%d}"
@@ -142,12 +143,13 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
     # Prepare Model
     model = model.to(config.device)
     model.add_scaler(train_dataset.node_scaler)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    lr = (epochs - start_epoch)/epochs * 0.001
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     alpha = 0.5 + negative_edge_imbalance(train_dataset)/2
     print("alpha: ", alpha)
     loss_obj = FocalLossLogits(alpha=alpha, gamma=2)
-    early_stopping = EarlyStopping(patience=20, delta=0)
+    early_stopping = EarlyStopping(patience=100, delta=0)
     scheduler = CosineAnnealingLR(optimizer, start_epoch+epochs, eta_min=1e-6)
 
     train_loss_hist = []
@@ -170,10 +172,11 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
         if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Diagrams")
 
-            val_loss, pred, y, weight = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
+            val_loss, pred, y, weight, ranks = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
 
             print("weighted by raw energy:")
-            plot_binned_validation_results(pred, y, weight, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}")
+            plot_binned_validation_results(pred, y, weight, weight, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}")
+            plot_binned_validation_results(pred, y, weight, ranks, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", type_bins="rank")
             plot_validation_results(pred, y, save=True, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", weight=weight)
 
         if (debug or ((epoch) % 10 == 0 and epoch != 0)):
