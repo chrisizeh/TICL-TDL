@@ -47,10 +47,10 @@ def process_event(idx, sample, histo_data, dataset_dir):
 
     rank2_cells = cc._num_cells_at_rank(2)
     assoc = histo_data.get_associations(sample)
-    y = assoc
+    y = torch.zeros_like(assoc)
 
-    y[:cc.num_nodes] = cc.incidence_matrix(0, 2) @ assoc[-rank2_cells:] == assoc[:cc.num_nodes]
-    y[cc.num_nodes:-rank2_cells] = cc.incidence_matrix(1, 2) @ assoc[-rank2_cells:] == assoc[cc.num_nodes:-rank2_cells]
+    y[:cc.num_nodes] = (cc.incidence_matrix(0, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[:cc.num_nodes]
+    y[cc.num_nodes:-rank2_cells] = (cc.incidence_matrix(1, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[cc.num_nodes:-rank2_cells]
     y = y[cell_mask]
     y = y[:-rank2_cells]
     y = y.unsqueeze(1)
