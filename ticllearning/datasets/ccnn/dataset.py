@@ -19,10 +19,11 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class CCData(Data):
-    def __init__(self, x, L, ranks, y, num_nodes, num_rank2):
+    def __init__(self, x, L, A, ranks, y, num_nodes, num_rank2):
         super().__init__()
         self.x = x
         self.L = L
+        self.A = A
         self.ranks = ranks
         self.num_nodes = num_nodes
         self.num_rank2 = num_rank2
@@ -46,6 +47,12 @@ def process_event(idx, sample, histo_data, dataset_dir):
         L_adj = Spectral.normalize_matrix(L_adj)
         L_adj = L_adj[cell_mask][:, cell_mask]
 
+        A = Spectral.graded_incidence_matrix(cc, weighted=False).to_dense()
+        A = torch.sparse.mm(A, A)
+        A = Spectral.normalize_matrix(A)
+        A = A[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
+        A = A[cell_mask][:, cell_mask]
+
         rank2_cells = cc._num_cells_at_rank(2)
         assoc = histo_data.get_associations(sample)
         y = torch.zeros_like(assoc)
@@ -60,7 +67,7 @@ def process_event(idx, sample, histo_data, dataset_dir):
         ranks = ranks[:-cc._num_cells_at_rank(3)]
         ranks = ranks[cell_mask]
 
-        data = CCData(x, L_adj.to_sparse(), ranks, y, y.shape[0], rank2_cells)
+        data = CCData(x, L_adj.to_sparse(), A.to_sparse(), ranks, y, y.shape[0], rank2_cells)
         torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
         return torch.max(torch.abs(x), axis=0).values.detach().cpu().numpy()
     except:
