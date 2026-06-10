@@ -41,13 +41,14 @@ class CellClassifier(nn.Module):
         self.register_buffer("node_scaler", node_scaler)
 
 
-    def forward(self, x, L, ranks):
+    def forward(self, x, L, ranks, rank3_cells):
         x = (x / self.node_scaler).float()
         x = self.encoder(x)
 
-        L = self.connection_attention(x, L, ranks)
+        L = self.connection_attention(x, L, ranks, rank3_cells)
+        x = x[:-rank3_cells]
         for layer in self.layers:
-            x = x + layer.forward(x, L, ranks)
+            x = x + layer.forward(x, L, ranks[:-rank3_cells])
 
         x = self.decoder(x)
         return x

@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class CCData(Data):
-    def __init__(self, x, L, A, ranks, y, num_nodes, num_rank2):
+    def __init__(self, x, L, A, ranks, y, num_nodes, num_rank2, num_rank3):
         super().__init__()
         self.x = x
         self.L = L
@@ -27,6 +27,7 @@ class CCData(Data):
         self.ranks = ranks
         self.num_nodes = num_nodes
         self.num_rank2 = num_rank2
+        self.num_rank3 = num_rank3
         self.y = y
 
 def process_event(idx, sample, histo_data, dataset_dir):
@@ -35,39 +36,35 @@ def process_event(idx, sample, histo_data, dataset_dir):
         cc = histo_data.add_skeleton_graph(cc, sample)
 
         x = cc.get_features()
-        x = x[:-cc._num_cells_at_rank(3)]
 
         # TODO: Work also with isolated cluster
         cell_mask = torch.ones(x.shape[0]).bool()
         cell_mask[:cc.num_nodes] = cc.get_connected_nodes_mask()
         x = x[cell_mask, :]
 
-        _, L_adj, _ = Spectral.full_graded_laplacian(cc)
-        L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
-        L_adj = Spectral.normalize_matrix(L_adj)
-        L_adj = L_adj[cell_mask][:, cell_mask]
+        #_, L_adj, _ = Spectral.full_graded_laplacian(cc)
+        #L_adj = Spectral.normalize_matrix(L_adj)
+        #L_adj = L_adj[cell_mask][:, cell_mask]
+        #L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
 
-        A = Spectral.graded_incidence_matrix(cc, weighted=False).to_dense()
-        A = torch.sparse.mm(A, A)
-        A = Spectral.normalize_matrix(A)
-        A = A[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
+        A = Spectral.graded_incidence_matrix(cc, weighted=True).to_dense()
         A = A[cell_mask][:, cell_mask]
 
         rank2_cells = cc._num_cells_at_rank(2)
+        rank3_cells = cc._num_cells_at_rank(3)
         assoc = histo_data.get_associations(sample)
         y = torch.zeros_like(assoc)
 
         y[:cc.num_nodes] = (cc.incidence_matrix(0, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[:cc.num_nodes]
         y[cc.num_nodes:-rank2_cells] = (cc.incidence_matrix(1, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[cc.num_nodes:-rank2_cells]
-        y = y[cell_mask]
+        y = y[cell_mask[:-rank3_cells]]
         y = y[:-rank2_cells]
         y = y.unsqueeze(1)
 
         ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(cc.device)
-        ranks = ranks[:-cc._num_cells_at_rank(3)]
         ranks = ranks[cell_mask]
 
-        data = CCData(x, L_adj.to_sparse(), A.to_sparse(), ranks, y, y.shape[0], rank2_cells)
+        data = CCData(x, L_adj.to_sparse(), A.to_sparse(), ranks, y, y.shape[0], rank2_cells, rank3_cells)
         torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
         return torch.max(torch.abs(x), axis=0).values.detach().cpu().numpy()
     except:
@@ -78,7 +75,7 @@ class CCDataset(Dataset):
     #node_feature_dict = {k: v for v, k in enumerate(node_feature_keys)}
     #model_feature_keys = node_feature_keys
 
-    def __init__(self, data_info, config, test=False, skeleton_features=False, node_scaler=None, num_workers=24, max_events=None):
+    def __init__(self, data_info, config, test=False, skeleton_features=False, node_scaler=None, num_workers=5, max_events=None):
         self.test = test
         self.skeleton_features = skeleton_features
         self.device = config.device
