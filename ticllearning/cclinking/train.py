@@ -13,7 +13,7 @@ from ticllearning.utils.training.save_model import save_model
 from ticllearning.utils.data_statistics import plot_loss
 from ticllearning.utils.plot_results import *
 from ticllearning.utils.training.early_stopping import EarlyStopping
-from ticllearning.utils.graph_utils import negative_edge_imbalance
+from ticllearning.utils.graph_utils import edge_imbalance
 
 def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
     epoch_loss = 0
@@ -146,7 +146,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
     lr = (epochs - start_epoch)/epochs * 0.001
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    alpha = 0.5 + negative_edge_imbalance(train_dataset)/2
+    alpha = 0.5 + edge_imbalance(train_dataset)/2
     print("alpha: ", alpha)
     loss_obj = FocalLossLogits(alpha=alpha, gamma=2)
     early_stopping = EarlyStopping(patience=100, delta=0)

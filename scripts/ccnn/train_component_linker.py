@@ -9,7 +9,7 @@ from ticllearning.cclinking.train import train_model
 if __name__ == "__main__":
     data_info = "closeby_multi_0pu"
     experiment_name = "cell_linking"
-    retrain = True
+    retrain = False
 
     in_channels = 4
     hidden_channels = 32
@@ -32,6 +32,8 @@ if __name__ == "__main__":
         weights = torch.load(osp.join(CONFIG.model, run_name, f"{run_name}_{extra_info}.pt"), weights_only=True)
         model.load_state_dict(weights["model_state_dict"], strict=False)
         start_epoch = weights["epoch"]
+    else:
+        start_epoch = 0
 
     train_model(model, data_info, experiment_name, CONFIG, epochs=200, start_epoch=start_epoch)
 

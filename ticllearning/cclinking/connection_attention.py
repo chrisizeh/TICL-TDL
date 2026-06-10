@@ -10,12 +10,10 @@ class ReweightConnection(nn.Module):
         self.att_src = nn.Linear(channels, 1)
         self.att_dst = nn.Linear(channels, 1)
         self.att_w = nn.Sequential(
-            nn.Linear(3, channels),
+            nn.Linear(5, channels),
             nn.ReLU(),
             nn.Linear(channels, 1),
         )
-
-        self.att_out = nn.Linear(channels, 1)
 
     def forward(self, x, A, ranks):
         A = A.to_dense()
@@ -23,9 +21,9 @@ class ReweightConnection(nn.Module):
         rank_i = ranks[None, :].expand_as(A)/self.max_rank
         rank_j = ranks[:, None].expand_as(A)/self.max_rank
 
-        src = self.att_src(x)
-        dst = self.att_dst(x)
-        w = self.att_w(torch.cat([A[..., None], rank_i[..., None], rank_j[..., None]], dim=-1)).squeeze(-1)
+        src = self.att_src(x).squeeze(1)[None, :].expand_as(A)
+        dst = self.att_dst(x).squeeze(1)[:, None].expand_as(A)
+        w = self.att_w(torch.cat([A[..., None], rank_i[..., None], rank_j[..., None], src[..., None], dst[..., None]], dim=-1)).squeeze(-1)
 
         alpha = src + dst + w 
         alpha = alpha.masked_fill(

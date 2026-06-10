@@ -185,6 +185,7 @@ def build_ticl_graph(NTrackster, trackster):
         allNodes["outer"].append(tNode.outer)
     return ak.Array(allNodes)
 
+
 def negative_edge_imbalance(dataset, epsilon=0):
     num_edges = 0
     neg_edges = 0
@@ -194,6 +195,21 @@ def negative_edge_imbalance(dataset, epsilon=0):
         neg_edges += (ev.y <= epsilon).sum()
 
     return neg_edges / num_edges
+
+
+def edge_imbalance(dataset, epsilon=0):
+    num_edges = 0
+    neg_edges = 0
+
+    for ev in dataset:
+        num_edges += len(ev.y)
+        neg_edges += (ev.y <= epsilon).sum()
+
+    if (neg_edges / num_edges < 0.5):
+        return -(num_edges - neg_edges) / num_edges
+
+
+    returnneg_edges / num_edges
 
 
 def print_graph_statistics(dataset, epsilon=0):
