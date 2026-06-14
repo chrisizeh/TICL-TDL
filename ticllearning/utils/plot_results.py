@@ -60,10 +60,15 @@ def plot_binned_validation_results(pred, y, weights, bins, thres=0.65, output_fo
     bin_vals = []
     for i in range(len(bin_edges)-1):
         in_bin = (bins >= bin_edges[i]) & (bins < bin_edges[i+1])
-        if in_bin.sum() > 100:
-            acc = accuracy_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
-            prec = precision_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
-            rec = recall_score(y_discrete[in_bin].numpy(), pred_discrete[in_bin].numpy())
+        
+        y_disc_bin = y_discrete[in_bin]
+        pred_disc_bin = pred_discrete[in_bin].numpy()
+        n_classes = torch.unique(y_disc_bin).numel()
+        y_disc_bin = y_disc_bin.numpy()
+        if in_bin.sum() > 100 and n_classes == 2:
+            acc = accuracy_score(y_disc_bin, pred_disc_bin)
+            prec = precision_score(y_disc_bin, pred_disc_bin)
+            rec = recall_score(y_disc_bin, pred_disc_bin)
             bin_vals.append((float(bin_edges[i]), float(bin_edges[i+1]), acc, prec, rec))
             plot_validation_results(pred[in_bin], y[in_bin], thres, weight=weights[in_bin], file_suffix=f"{file_suffix}_bin_{type_bins}_{float(bin_edges[i])}_{float(bin_edges[i+1])}", output_folder=output_folder)
 
