@@ -6,9 +6,9 @@ from ticllearning.cclinking.train import train_model
 
 if __name__ == "__main__":
     data_info = "closeby_multi_0pu"
-    experiment_name = "attention_cell_linking"
+    experiment_name = "laplacian_build_cell_linking"
 
-    in_channels = 4
+    in_channels = [6, 16, 16]
     hidden_channels = 32
     num_classes = 1
     num_layer = 2

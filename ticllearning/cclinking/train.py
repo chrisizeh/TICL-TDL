@@ -26,11 +26,11 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         # reset optimizer and enable training mode
         optimizer.zero_grad(set_to_none=True)
 
-        z = model(sample.x, sample.A, sample.ranks, sample.num_rank3)
-        z = z[:-sample.num_rank2]
+        z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+        z = z[:-sample.num_cells[2]]
         
         # rescale weights to interval [0, 1]
-        weights = sample.x[:-(sample.num_rank2+sample.num_rank3)].clone().detach()[:, -1]
+        weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
         weights /= 300
         weights = torch.clamp(weights, 0.0, 1.0)
         weights = weights
@@ -68,8 +68,8 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
         stats = torch.zeros(4, device=config.device)
             
         for sample in tqdm(data, desc=f"Test Epoch {epoch}"):
-            z = model(sample.x, sample.A, sample.ranks, sample.num_rank3)
-            z = z[:-sample.num_rank2]
+            z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z = z[:-sample.num_cells[2]]
             
             # rescale weights to interval [0, 1]
 
@@ -77,7 +77,7 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
             y_true = (sample.y > 0).squeeze()
             
             # rescale weights to interval [0, 1]
-            weights = sample.x[:-(sample.num_rank2+sample.num_rank3)].clone().detach()[:, -1]
+            weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
 
             stats[0] += torch.sum(weights * (y_true & y_pred)).item()
             stats[1] += torch.sum(weights * (~y_true & y_pred)).item()
@@ -104,15 +104,15 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         pred, ys, weights, ranks = [], [], [], []
             
         for sample in tqdm(data, desc=f"Validation Epoch {epoch}"):
-            z = model(sample.x, sample.A, sample.ranks, sample.num_rank3)
-            z = z[:-sample.num_rank2]
+            z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z = z[:-sample.num_cells[2]]
             
             pred += z.squeeze(-1).tolist()
             ys += sample.y.squeeze(-1).tolist()
-            ranks += sample.ranks[:-(sample.num_rank2+sample.num_rank3)].squeeze(-1).tolist()
+            ranks += sample.ranks[:-(sample.num_cells[2]+sample.num_cells[3])].squeeze(-1).tolist()
 
             # rescale weights to interval [0, 1]
-            weight = sample.x[:-(sample.num_rank2+sample.num_rank3)].clone().detach()[:, -1]
+            weight = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
             weights += weight.tolist()
             weight /= 300
             weight = torch.clamp(weight, 0.0, 1.0)

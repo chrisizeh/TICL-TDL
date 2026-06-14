@@ -19,56 +19,51 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class CCData(Data):
-    def __init__(self, x, L, A, ranks, y, num_nodes, num_rank2, num_rank3):
+    def __init__(self, x, L, A, ranks, y, num_cells):
         super().__init__()
         self.x = x
         self.L = L
         self.A = A
         self.ranks = ranks
-        self.num_nodes = num_nodes
-        self.num_rank2 = num_rank2
-        self.num_rank3 = num_rank3
         self.y = y
+        self.num_cells = num_cells
 
 def process_event(idx, sample, histo_data, dataset_dir):
-    try:
-        cc = histo_data.build_cc(sample)
-        cc = histo_data.add_skeleton_graph(cc, sample)
+    cc = histo_data.build_cc(sample)
+    cc = histo_data.add_skeleton_graph(cc, sample)
 
-        x = cc.get_features()
+    # TODO: Work also with isolated cluster
+    _, L_adj, _ = Spectral.full_graded_laplacian(cc)
+    cell_mask = torch.ones(L_adj.shape[0]).bool()
+    cell_mask[:cc.num_nodes] = cc.get_connected_nodes_mask()
 
-        # TODO: Work also with isolated cluster
-        cell_mask = torch.ones(x.shape[0]).bool()
-        cell_mask[:cc.num_nodes] = cc.get_connected_nodes_mask()
-        x = x[cell_mask, :]
+    x = cc.nodes
+    x = x[cell_mask[:cc.num_nodes], :]
+    num_cells = torch.Tensor([x.shape[0], cc._num_cells_at_rank(1), cc._num_cells_at_rank(2), cc._num_cells_at_rank(3)]).long()
 
-        #_, L_adj, _ = Spectral.full_graded_laplacian(cc)
-        #L_adj = Spectral.normalize_matrix(L_adj)
-        #L_adj = L_adj[cell_mask][:, cell_mask]
-        #L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
+    L_adj = Spectral.normalize_matrix(L_adj)
+    L_adj = L_adj[cell_mask][:, cell_mask]
+    L_adj = L_adj.to_dense()[:-cc._num_cells_at_rank(3), :-cc._num_cells_at_rank(3)]
 
-        A = Spectral.graded_incidence_matrix(cc, weighted=True).to_dense()
-        A = A[cell_mask][:, cell_mask]
+    A = Spectral.graded_incidence_matrix(cc, weighted=True).to_dense()
+    A = A[cell_mask][:, cell_mask]
 
-        rank2_cells = cc._num_cells_at_rank(2)
-        rank3_cells = cc._num_cells_at_rank(3)
-        assoc = histo_data.get_associations(sample)
-        y = torch.zeros_like(assoc)
+    assoc = histo_data.get_associations(sample)
+    y = torch.zeros_like(assoc)
 
-        y[:cc.num_nodes] = (cc.incidence_matrix(0, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[:cc.num_nodes]
-        y[cc.num_nodes:-rank2_cells] = (cc.incidence_matrix(1, 2, weighted=False) @ assoc[-rank2_cells:]) == assoc[cc.num_nodes:-rank2_cells]
-        y = y[cell_mask[:-rank3_cells]]
-        y = y[:-rank2_cells]
-        y = y.unsqueeze(1)
+    y[:cc.num_nodes] = (cc.incidence_matrix(0, 2, weighted=False) @ assoc[-num_cells[2]:]) == assoc[:cc.num_nodes]
+    y[cc.num_nodes:-num_cells[2]] = (cc.incidence_matrix(1, 2, weighted=False) @ assoc[-num_cells[2]:]) == assoc[cc.num_nodes:-num_cells[2]]
+    y = y[cell_mask[:-num_cells[3]]]
+    y = y[:-num_cells[2]]
+    y = y.unsqueeze(1)
 
-        ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(cc.device)
-        ranks = ranks[cell_mask]
+    ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(cc.device)
+    ranks = ranks[cell_mask]
+    x = [x, ak.to_torch(cc.cells.features[cc.cells.rank == 1]).float().to(cc.device), ak.to_torch(cc.cells.features[cc.cells.rank == 2]).float().to(cc.device)]
 
-        data = CCData(x, L_adj.to_sparse(), A.to_sparse(), ranks, y, y.shape[0], rank2_cells, rank3_cells)
-        torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
-        return torch.max(torch.abs(x), axis=0).values.detach().cpu().numpy()
-    except:
-        return None
+    data = CCData(x, L_adj.to_sparse(), A.to_sparse(), ranks, y, num_cells)
+    torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
+    return [torch.max(torch.abs(data.x[i]), axis=0).values.detach().cpu().numpy() for i in range(3)]
 
 class CCDataset(Dataset):
     #node_feature_keys = ["barycenter_eta", "barycenter_phi", "barycenter_z", "raw_energy"]
@@ -137,12 +132,12 @@ class CCDataset(Dataset):
                         max_features = future.result()
                         if (not self.test and max_features is not None):
                             if self.node_scaler is not None:
-                                self.node_scaler = torch.maximum(self.node_scaler, torch.tensor(max_features))
+                                self.node_scaler = [torch.maximum(self.node_scaler[i], torch.tensor(max_features[i])) for i in range(3)]
                             else:
-                                self.node_scaler = torch.tensor(max_features).float().to(self.device)
+                                self.node_scaler = [torch.tensor(max_features[i]).float().to(self.device) for i in range(3)]
 
         if (not self.test):
-            torch.save(self.node_scaler.float().to(self.device), osp.join(self.output_folder, "node_scaler.pt"))
+            torch.save(self.node_scaler, osp.join(self.output_folder, "node_scaler.pt"))
 
         idx = 0
         for file in tqdm(self.processed_file_names, desc="Fixing holes"):
