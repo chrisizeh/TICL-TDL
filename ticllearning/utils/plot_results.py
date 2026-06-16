@@ -66,11 +66,14 @@ def plot_binned_validation_results(pred, y, weights, bins, thres=0.65, output_fo
         n_classes = torch.unique(y_disc_bin).numel()
         y_disc_bin = y_disc_bin.numpy()
         if in_bin.sum() > 100 and n_classes == 2:
-            acc = accuracy_score(y_disc_bin, pred_disc_bin)
-            prec = precision_score(y_disc_bin, pred_disc_bin)
-            rec = recall_score(y_disc_bin, pred_disc_bin)
-            bin_vals.append((float(bin_edges[i]), float(bin_edges[i+1]), acc, prec, rec))
-            plot_validation_results(pred[in_bin], y[in_bin], thres, weight=weights[in_bin], file_suffix=f"{file_suffix}_bin_{type_bins}_{float(bin_edges[i])}_{float(bin_edges[i+1])}", output_folder=output_folder)
+            try:
+                acc = accuracy_score(y_disc_bin, pred_disc_bin)
+                prec = precision_score(y_disc_bin, pred_disc_bin)
+                rec = recall_score(y_disc_bin, pred_disc_bin)
+                bin_vals.append((float(bin_edges[i]), float(bin_edges[i+1]), acc, prec, rec))
+                plot_validation_results(pred[in_bin], y[in_bin], thres, weight=weights[in_bin], file_suffix=f"{file_suffix}_bin_{type_bins}_{float(bin_edges[i])}_{float(bin_edges[i+1])}", output_folder=output_folder)
+            except:
+                pass
 
     for low, high, acc, prec, rec in bin_vals:
         if acc != None:
@@ -214,6 +217,10 @@ def print_binned_acc_scores(pred, y, weights, thres=0.65):
 
 def plot_roc_curve(pred, y, ax, weight=None):
     y_discrete = (y > 0).astype(int)
+    n_classes = np.unique(y_discrete).shape[0]
+    if n_classes == 1:
+        return
+
     fpr, tpr, _ = roc_curve(y_discrete, pred, sample_weight=weight)
 
     fpr = np.round(fpr, decimals=8)

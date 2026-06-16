@@ -1,6 +1,6 @@
-import os.path as osp
 import os
 from datetime import datetime
+import os.path as osp
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -26,11 +26,11 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         # reset optimizer and enable training mode
         optimizer.zero_grad(set_to_none=True)
 
+        weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
         z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
         z = z[:-sample.num_cells[2]]
         
         # rescale weights to interval [0, 1]
-        weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
         weights /= 300
         weights = torch.clamp(weights, 0.0, 1.0)
         weights = weights
@@ -68,6 +68,8 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
         stats = torch.zeros(4, device=config.device)
             
         for sample in tqdm(data, desc=f"Test Epoch {epoch}"):
+            weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
+
             z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
             
@@ -76,9 +78,6 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
             y_pred = (z > threshold).squeeze()
             y_true = (sample.y > 0).squeeze()
             
-            # rescale weights to interval [0, 1]
-            weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
-
             stats[0] += torch.sum(weights * (y_true & y_pred)).item()
             stats[1] += torch.sum(weights * (~y_true & y_pred)).item()
             stats[2] += torch.sum(weights * (y_true & ~y_pred)).item()
@@ -104,6 +103,9 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
         pred, ys, weights, ranks = [], [], [], []
             
         for sample in tqdm(data, desc=f"Validation Epoch {epoch}"):
+            weight = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
+            weights += weight.tolist()
+
             z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
             
@@ -112,8 +114,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             ranks += sample.ranks[:-(sample.num_cells[2]+sample.num_cells[3])].squeeze(-1).tolist()
 
             # rescale weights to interval [0, 1]
-            weight = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
-            weights += weight.tolist()
+
             weight /= 300
             weight = torch.clamp(weight, 0.0, 1.0)
             weight = weight.detach()
@@ -168,7 +169,7 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
 
         print("Fast statistic on model threshold:")
         print_acc_scores_from_precalc(*stats)
-        
+
         if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Diagrams")
 
