@@ -25,8 +25,8 @@ class ReweightConnection(nn.Module):
         alpha = self.att_w(torch.cat([A[..., None], rank_i[..., None], rank_j[..., None], src[..., None], dst[..., None]], dim=-1)).squeeze(-1)
 
         alpha = torch.sigmoid(alpha)
-        C = (A + alpha).to_sparse() 
-        C = alpha.masked_fill(torch.eye(A.shape[0], device=A.device, dtype=torch.bool), 0)
+        C = A + alpha
+        C = C.masked_fill(torch.eye(A.shape[0], device=A.device, dtype=torch.bool), 0)
         deg = C.sum(dim=1)
 
         C = C + torch.diag(deg)
