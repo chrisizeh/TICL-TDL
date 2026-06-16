@@ -68,11 +68,11 @@ class CellClassifier(nn.Module):
         x.append(torch.zeros((num_cells[3], self.hidden_channels)))
         x = torch.cat(x, axis=0)
 
-        L = self.connection_attention(x, L, ranks, num_cells[3])
+        L, debug = self.connection_attention(x, L, ranks, num_cells[3])
         x = x[:-num_cells[3]]
         for layer in self.layers:
             x = x + layer.forward(x, L, ranks[:-num_cells[3]])
 
         x = self.decoder(x)
-        return x
+        return x, debug
 

@@ -34,4 +34,10 @@ class ReweightConnection(nn.Module):
         D_inv_sqrt = torch.diag(1.0 / torch.sqrt(deg + 1e-8))
         C_adj = (D_inv_sqrt @ C_adj @ D_inv_sqrt)
 
-        return C_adj[:-rank3_cells, :-rank3_cells].to_sparse()
+        return C_adj[:-rank3_cells, :-rank3_cells].to_sparse(), {
+            "A": A.detach(),
+            "alpha": alpha.detach(),
+            "C": C.detach(),
+            "deg": deg.detach(),
+            "C_adj": C_adj.detach(),
+        }

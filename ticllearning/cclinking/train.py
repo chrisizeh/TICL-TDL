@@ -27,7 +27,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         optimizer.zero_grad(set_to_none=True)
 
         weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
-        z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+        z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
         z = z[:-sample.num_cells[2]]
         
         # rescale weights to interval [0, 1]
@@ -70,12 +70,13 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
         for sample in tqdm(data, desc=f"Test Epoch {epoch}"):
             weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
 
-            z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
+            p = torch.sigmoid(z)
             
             # rescale weights to interval [0, 1]
 
-            y_pred = (z > threshold).squeeze()
+            y_pred = (p > threshold).squeeze()
             y_true = (sample.y > 0).squeeze()
             
             stats[0] += torch.sum(weights * (y_true & y_pred)).item()
@@ -106,10 +107,10 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             weight = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
             weights += weight.tolist()
 
-            z = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
             
-            pred += z.squeeze(-1).tolist()
+            pred += torch.sigmoid(z).squeeze(-1).tolist()
             ys += sample.y.squeeze(-1).tolist()
             ranks += sample.ranks[:-(sample.num_cells[2]+sample.num_cells[3])].squeeze(-1).tolist()
 
