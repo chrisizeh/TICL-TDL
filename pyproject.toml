@@ -13,4 +13,5 @@ dependencies = [
   # Add runtime dependencies here, e.g.:
   # "requests>=2.25.1"
 ]
-
+[tool.black]
+line-length = 180
