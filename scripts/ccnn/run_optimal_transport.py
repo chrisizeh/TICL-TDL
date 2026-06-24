@@ -13,18 +13,20 @@ from ticllearning.datasets.ccnn.dataset import CCDataset
 
 from awkward_complex.classes.spectral import Spectral
 from awkward_complex.datasets.cern.build import CERN
+from awkward_complex.datasets.cern.plot_associations import compare_associations, compare_associations_z_video
+from awkward_complex.utils.plot_complex import show_plots, plot_matrix_hexbin
 
 
 def validate_selection(connections, associations, num_rank2, cell_mask):
     connections = connections.to(associations.device)
-
     valid = connections >= 0
 
     target = associations[: cell_mask.shape[0]][cell_mask]
     selected = torch.zeros_like(target)
     selected[valid] = associations[-num_rank2:][connections[valid]]
+    selected[~valid] = -1
 
-    return (selected == target).float().mean()
+    return selected, target
 
 
 def sinkhorn_from_cost(C, eps=0.05, n_iter=200):
@@ -32,8 +34,8 @@ def sinkhorn_from_cost(C, eps=0.05, n_iter=200):
     device = C.device
     dtype = C.dtype
 
-    a = torch.full((n,), 1.0 / n, device=device, dtype=dtype)
-    b = torch.full((m,), 1.0 / m, device=device, dtype=dtype)
+    a = torch.full((n,), 100.0 / n, device=device, dtype=dtype)
+    b = torch.full((m,), 100.0 / m, device=device, dtype=dtype)
 
     K = torch.exp(-C / eps)
 
@@ -65,9 +67,7 @@ def build_model_data(cc):
         ]
     ).long()
 
-    ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(
-        cc.device
-    )
+    ranks = torch.cat([torch.zeros(cc.num_nodes), ak.to_torch(cc.cells.rank)]).to(cc.device)
     ranks = ranks[cell_mask]
     x = [
         x,
@@ -85,7 +85,8 @@ if __name__ == "__main__":
     extra_info = "epoch_29_dict"
     run_name = f"{model_date}_{model_name}_{data_info}"
     experiment_name = f"1_step_optimal_transport_{run_name}"
-    os.makedirs(osp.join(CONFIG.plots, experiment_name), exist_ok=True)
+    output_folder = osp.join(CONFIG.plots, experiment_name)
+    os.makedirs(output_folder, exist_ok=True)
 
     thresh = 0.6
     n_events = 10
@@ -132,19 +133,12 @@ if __name__ == "__main__":
             base_z, _ = model(*model_input)
             pred = torch.sigmoid(base_z)
 
-            mask = (
-                (pred.squeeze()[model_input[-1][0] : -model_input[-1][2]] > thresh)
-                .detach()
-                .cpu()
-                .numpy()
-            )
+            mask = (pred.squeeze()[model_input[-1][0] : -model_input[-1][2]] > thresh).detach().cpu().numpy()
             skeleton_to_trackster = torch.sparse.mm(
                 cc.incidence_matrix(2, 1, weighted=False),
                 cc.incidence_matrix(1, 3, weighted=False),
             )
-            trackster_to_linked = torch.sparse.mm(
-                skeleton_to_trackster, cc.incidence_matrix(3, 1, weighted=False)
-            ).T
+            trackster_to_linked = torch.sparse.mm(skeleton_to_trackster, cc.incidence_matrix(3, 1, weighted=False)).T
             trackster_to_linked._values().fill_(1)
             incidence = cc.incidence_matrix(1, 2, weighted=False)
             adaptions = (trackster_to_linked - incidence).to_dense()
@@ -152,9 +146,7 @@ if __name__ == "__main__":
             print("num adaptions", adaptions.sum())
 
             adap_coords = torch.nonzero(adaptions)
-            associations = cc.incidence_matrix(0, 2, weighted=False).to_dense()[
-                cell_mask
-            ]
+            associations = cc.incidence_matrix(0, 2, weighted=False).to_dense()[cell_mask]
             connections = torch.where(
                 associations.any(dim=1),
                 associations.ne(0).float().argmax(dim=1),
@@ -165,21 +157,16 @@ if __name__ == "__main__":
             for i, new_parent in adap_coords:
                 histo_data.change_parent(cc, int(i), 1, int(new_parent))
 
-                histo_data.change_parent(cc, int(i), 1, int(new_parent))
                 z, _ = model(*build_model_data(cc))
                 probs = torch.cat([probs, torch.sigmoid(z)], axis=-1)
-                associations = cc.incidence_matrix(0, 2, weighted=False).to_dense()[
-                    cell_mask
-                ]
+                associations = cc.incidence_matrix(0, 2, weighted=False).to_dense()[cell_mask]
                 connections = torch.cat(
                     [
                         connections,
                         torch.where(
                             associations.any(dim=1),
                             associations.ne(0).float().argmax(dim=1),
-                            torch.full(
-                                (associations.shape[0],), -1, device=associations.device
-                            ),
+                            torch.full((associations.shape[0],), -1, device=associations.device),
                         ).unsqueeze(-1),
                     ],
                     axis=-1,
@@ -191,17 +178,23 @@ if __name__ == "__main__":
             chosen_values = connections[rows, assigned_parent]
 
             associations = histo_data.get_associations(sample)
-            base_res = validate_selection(
-                connections[:, 0], associations, model_input[-1][2], cell_mask
-            )
-            adap_res = validate_selection(
-                chosen_values, associations, model_input[-1][2], cell_mask
-            )
+            base_reco, target = validate_selection(connections[:, 0], associations, model_input[-1][2], cell_mask)
+            base_res = (base_reco == target).float().mean()
+            adap_reco, target = validate_selection(chosen_values, associations, model_input[-1][2], cell_mask)
+            adap_res = (adap_reco == target).float().mean()
             print(base_res, adap_res)
 
             base_vals.append(base_res)
             adap_vals.append(adap_res)
             diffs.append(adap_res - base_res)
+
+            compare_associations(cc.nodes[cell_mask], [base_reco, adap_reco, target], ["base", "adaption", "simulation"], file_suffix=f"{experiment_name}_{sample}", output_folder=output_folder)
+            compare_associations_z_video(
+                cc.nodes[cell_mask], [base_reco, adap_reco, target], ["base", "adaption", "simulation"], file_suffix=f"{experiment_name}_{sample}", output_folder=output_folder
+            )
+            #plot_matrix_hexbin(P[: model_input[-1][0], : model_input[-1][0]])
+            #plot_matrix_hexbin(probs[: model_input[-1][0], : model_input[-1][0]])
+            #show_plots()
 
             if sample > n_events:
                 break
