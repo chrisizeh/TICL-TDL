@@ -17,7 +17,7 @@ from ticllearning.utils.graph_utils import edge_imbalance
 
 def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
     epoch_loss = 0
-    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
+    loss_obj_merge = FocalLossLogits(alpha=0.4, gamma=2)
 
     model.train()
     step = 1
@@ -44,7 +44,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
 
         loss_cell = loss_obj(z, sample.y, weights)
         loss_merge = loss_obj_merge(z_rank2, merge_y)
-        loss = loss_cell + 0.2 * loss_merge
+        loss = loss_cell + loss_merge
 
         # back-propagate and update the weight
         if not torch.isfinite(loss): raise RuntimeError("Non-finite loss")
@@ -69,7 +69,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
 
 
 def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.5):
-    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
+    loss_obj_merge = FocalLossLogits(alpha=0.4, gamma=2)
     with torch.set_grad_enabled(False):
         model.eval()
         val_loss = 0.0
@@ -106,7 +106,7 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
 
             loss_cell = loss_obj(z, sample.y, weights)
             loss_merge = loss_obj_merge(z_rank2, merge_y)
-            loss = loss_cell + 0.2 * loss_merge
+            loss = loss_cell + loss_merge
             val_loss += loss
 
         val_loss /= len(data)
@@ -114,7 +114,7 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
 
 
 def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.5):
-    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
+    loss_obj_merge = FocalLossLogits(alpha=0.4, gamma=2)
     with torch.set_grad_enabled(False):
         model.eval()
         val_loss = 0.0
@@ -147,7 +147,7 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
 
             loss_cell = loss_obj(z, sample.y, weight)
             loss_merge = loss_obj_merge(z_rank2, merge_y)
-            loss = loss_cell + 0.2 * loss_merge
+            loss = loss_cell + loss_merge
             val_loss += loss
 
         val_loss /= len(data)
