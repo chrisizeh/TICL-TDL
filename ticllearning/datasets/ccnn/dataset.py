@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 class CCData(Data):
-    def __init__(self, file, event, x, L, A, ranks, y, num_cells, assoc):
+    def __init__(self, file, event, x, L, A, ranks, y, num_cells, assoc, cells):
         super().__init__()
         self.x = x
         self.L = L
@@ -30,6 +30,7 @@ class CCData(Data):
         self.event = event
         self.file = file
         self.assoc = assoc
+        self.cells = cells
 
 def process_event(idx, sample, histo_data, dataset_dir):
     try:
@@ -65,7 +66,7 @@ def process_event(idx, sample, histo_data, dataset_dir):
         ranks = ranks[cell_mask]
         x = [x, ak.to_torch(cc.cells.features[cc.cells.rank == 1]).float().to(cc.device), ak.to_torch(cc.cells.features[cc.cells.rank == 2]).float().to(cc.device)]
 
-        data = CCData(histo_data.info, sample, x, L_adj.to_sparse(), A.to_sparse(), ranks, y, num_cells, assoc)
+        data = CCData(histo_data.info, sample, x, L_adj.to_sparse(), A.to_sparse(), ranks, y, num_cells, assoc, cc.cells)
         torch.save(data, osp.join(dataset_dir, f'data_{(idx+sample):05d}.pt'))
         return [torch.max(torch.abs(data.x[i]), axis=0).values.detach().cpu().numpy() for i in range(3)]
     except Exception as e:
