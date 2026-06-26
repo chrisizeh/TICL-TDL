@@ -5,7 +5,7 @@ from ticllearning.cclinking.component_classifier import CellClassifier
 from ticllearning.cclinking.train import train_model
 
 if __name__ == "__main__":
-    data_info = "closeby_multi_pion_0pu"
+    data_info = "closeby_multi_0pu"
     experiment_name = "dummy_cell_linking"
 
     in_channels = [6, 16, 16]
