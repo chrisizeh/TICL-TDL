@@ -8,19 +8,20 @@ class FocalLossLogits(nn.Module):
     Binary focal loss operating on *logits* for numerical stability.
     Supports per-sample weights (same shape as targets).
     """
+
     def __init__(self, gamma: float = 2.0, alpha: float = 0.4, eps: float = 1e-8):
         super().__init__()
         self.gamma = gamma
         self.alpha = alpha
         self.eps = eps
 
-    def forward(self, logits: torch.Tensor, targets: torch.Tensor, weights: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor, weights: torch.Tensor|None = None) -> torch.Tensor:
         # Ensure floats
         targets = targets.float()
         logits = logits.float()
 
         # Base BCE in logit space (stable)
-        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')  # [N]
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")  # [N]
 
         # p_t = sigmoid(logit) if y=1 else 1 - sigmoid(logit)
         p = torch.sigmoid(logits)
@@ -45,6 +46,7 @@ class FocalLossLogits(nn.Module):
 
         return loss.mean()
 
+
 class FocalLoss(nn.Module):
     def __init__(self, gamma=2, alpha=0.4):
         super(FocalLoss, self).__init__()
@@ -61,7 +63,7 @@ class FocalLoss(nn.Module):
         :param gamma: focal loss power parameter, a float scalar.
         :param alpha: weight of the class indicated by 1, a float scalar.
         """
-        ce_loss = F.binary_cross_entropy(predictions, targets, reduction='none', weight=weights)
+        ce_loss = F.binary_cross_entropy(predictions, targets, reduction="none", weight=weights)
         p_t = torch.exp(-ce_loss)
         alpha_tensor = (1 - self.alpha) + targets * (2 * self.alpha - 1)
         # alpha if target = 1 and 1 - alpha if target = 0
@@ -81,6 +83,7 @@ class ContrastiveLoss(nn.Module):
         d = F.pairwise_distance(e1, e2)  # [N], in [0,2]
         loss = ((1 - label) * d.pow(2) + label * (torch.clamp(self.margin - d, min=0.0).pow(2))).mean()
         return loss
+
 
 class CombinedLoss(nn.Module):
     def __init__(self, gamma=2, alpha=0.4, margin=0.3, weightFocal=0.6, weightContrastive=0.4):

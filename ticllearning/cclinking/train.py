@@ -17,6 +17,7 @@ from ticllearning.utils.graph_utils import edge_imbalance
 
 def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
     epoch_loss = 0
+    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
 
     model.train()
     step = 1
@@ -27,7 +28,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         optimizer.zero_grad(set_to_none=True)
 
         weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
-        z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+        z, edge_index, z_rank2, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
         z = z[:-sample.num_cells[2]]
         
         # rescale weights to interval [0, 1]
@@ -35,7 +36,15 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
         weights = torch.clamp(weights, 0.0, 1.0)
         weights = weights
 
-        loss = loss_obj(z, sample.y, weights)
+        src, dst = edge_index
+        assoc = sample.assoc
+
+        merge_y = (assoc[src] >= 0) & (assoc[src] == assoc[dst])
+        merge_y = merge_y.float()
+
+        loss_cell = loss_obj(z, sample.y, weights)
+        loss_merge = loss_obj_merge(z_rank2, merge_y)
+        loss = loss_cell + 0.2 * loss_merge
 
         # back-propagate and update the weight
         if not torch.isfinite(loss): raise RuntimeError("Non-finite loss")
@@ -60,6 +69,7 @@ def train_epoch(epoch, model, data, loss_obj, optimizer, weighted=True):
 
 
 def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.5):
+    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
     with torch.set_grad_enabled(False):
         model.eval()
         val_loss = 0.0
@@ -70,7 +80,7 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
         for sample in tqdm(data, desc=f"Test Epoch {epoch}"):
             weights = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
 
-            z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z, edge_index, z_rank2, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
             p = torch.sigmoid(z)
             
@@ -89,7 +99,14 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
             weights = torch.clamp(weights, 0.0, 1.0)
             weights = weights.detach()
 
-            loss = loss_obj(z, sample.y, weights).item()
+            src, dst = edge_index
+            assoc = sample.assoc
+            merge_y = (assoc[src] >= 0) & (assoc[src] == assoc[dst])
+            merge_y = merge_y.float()
+
+            loss_cell = loss_obj(z, sample.y, weights)
+            loss_merge = loss_obj_merge(z_rank2, merge_y)
+            loss = loss_cell + 0.2 * loss_merge
             val_loss += loss
 
         val_loss /= len(data)
@@ -97,20 +114,22 @@ def test_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.
 
 
 def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshold=0.5):
+    loss_obj_merge = FocalLossLogits(alpha=0.6, gamma=2)
     with torch.set_grad_enabled(False):
         model.eval()
         val_loss = 0.0
 
-        pred, ys, weights, ranks = [], [], [], []
+        pred, pred_merge, ys, ys_merge, weights, ranks = [], [], [], [], [], []
             
         for sample in tqdm(data, desc=f"Validation Epoch {epoch}"):
             weight = torch.cat([sample.x[i][:, 3] for i in range(2)]).clone().detach()
             weights += weight.tolist()
 
-            z, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
+            z, edge_index, z_rank2, _ = model(sample.x, sample.A, sample.ranks, sample.num_cells)
             z = z[:-sample.num_cells[2]]
             
             pred += torch.sigmoid(z).squeeze(-1).tolist()
+            pred_merge += torch.sigmoid(z_rank2).squeeze(-1).tolist()
             ys += sample.y.squeeze(-1).tolist()
             ranks += sample.ranks[:-(sample.num_cells[2]+sample.num_cells[3])].squeeze(-1).tolist()
 
@@ -120,11 +139,19 @@ def validate_epoch(epoch, model, data, loss_obj, config, weighted=True, threshol
             weight = torch.clamp(weight, 0.0, 1.0)
             weight = weight.detach()
 
-            loss = loss_obj(z, sample.y, weight).item()
+            src, dst = edge_index
+            assoc = sample.assoc
+            merge_y = (assoc[src] >= 0) & (assoc[src] == assoc[dst])
+            merge_y = merge_y.float()
+            ys_merge += merge_y.squeeze(-1).tolist()
+
+            loss_cell = loss_obj(z, sample.y, weight)
+            loss_merge = loss_obj_merge(z_rank2, merge_y)
+            loss = loss_cell + 0.2 * loss_merge
             val_loss += loss
 
         val_loss /= len(data)
-    return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(weights), torch.Tensor(ranks)
+    return val_loss, torch.Tensor(pred), torch.Tensor(ys), torch.Tensor(pred_merge), torch.Tensor(ys_merge), torch.Tensor(weights), torch.Tensor(ranks)
 
 def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=100, threshold=0.5, max_events=None, debug=False):
     date = f"{datetime.now():%Y-%m-%d}"
@@ -174,12 +201,13 @@ def train_model(model, dataset, experiment_name, config, start_epoch=0, epochs=1
         if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Diagrams")
 
-            val_loss, pred, y, weight, ranks = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
+            val_loss, pred, y, pred_merge, y_merge, weight, ranks = validate_epoch(epoch, model, test_dl, loss_obj, config, threshold=threshold)
 
             print("weighted by raw energy:")
             plot_binned_validation_results(pred, y, weight, weight, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}")
             plot_binned_validation_results(pred, y, weight, ranks, thres=threshold, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", type_bins="rank")
             plot_validation_results(pred, y, save=True, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}", weight=weight)
+            plot_validation_results(pred_merge, y_merge, save=True, output_folder=plot_folder, file_suffix=f"{run_name}_epoch_{epoch}_merge")
 
         if (debug or ((epoch) % 10 == 0 and epoch != 0)):
             print("Store Model")
